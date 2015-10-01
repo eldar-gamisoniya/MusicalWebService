@@ -35,7 +35,7 @@ apiv1/sources - хранятся композиции в виде файлов �
             {
                 "login":"vas",
                 "author":"Opus",
-                "performer":"Opus",,
+                "performer":"Opus",
                 "name":"Life",
                 "id":1
             }
@@ -58,7 +58,7 @@ apiv1/sources - хранятся композиции в виде файлов �
     {
         "owner":"vas",
         "author":"Opus",
-        "performer":"Opus",,
+        "performer":"Opus",
         "name":"Life",
         "id":1
     }
