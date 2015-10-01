@@ -77,5 +77,5 @@ apiv1/users - хранится информация о пользователя�
     {
         "oldpassword":"qwerty",
         "newpassword":"1234",
-        "aboutyourself":null
+        "aboutyourself":"Ny name is Andrew!"
     }
