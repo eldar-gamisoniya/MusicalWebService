@@ -45,9 +45,8 @@ apiv1/compositions/{id}/stream - хранятся композиции в вид
                 "compositionid":1
             }
         ],
-        "nextcompositionprefix":"Lif",
-        "nextperformerprefix":"Opus",
-        "nextfirstid":2
+        "firstid":3,
+        "count":1
     }
 
 ### GET /apiv1/compositions/{id}
