@@ -50,8 +50,8 @@ apiv1/playlists - хранится информация о плейлистах.
                 "playlistid":2
             }
         ],
-        "userid":1,
-        "nextfirstid":3
+        "firstid":5,
+        "count":2
     }
 
 ### GET /apiv1/playlists/{id}
