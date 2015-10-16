@@ -82,7 +82,7 @@ apiv1/playlists - хранится информация о плейлистах.
         ]
     }
 
-### PUT /apiv1/playlists/{id}
+### PUT /apiv1/playlists/{id}/compositions
 
 Позволяет добавить композицию в плейлист. Пользователь может добавлять композиции только в собственный плейлист.
 
@@ -98,7 +98,7 @@ apiv1/playlists - хранится информация о плейлистах.
         "compositionid":1
     }
     
-### DELETE /apiv1/playlists/{playlistid}/{compositionid}
+### DELETE /apiv1/playlists/{playlistid}/compositions/{compositionid}
 
 Позволяет удалить композицию из плейлиста. Пользователь может удалять композиции только из собственного плейлиста.
 
