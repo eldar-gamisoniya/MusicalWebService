@@ -16,12 +16,12 @@ apiv1/compositions/{id}/stream - хранятся композиции в вид
 
 ##### Пример выходных данных:
     {
-        "ownerlogin":"vas",
-        "ownerid":5,
+        "login":"vas",
+        "userid":5,
         "author":"Opus",
         "performer":"Opus",
         "name":"Life",
-        "id":1
+        "compositionid":1
     }
 
 ### GET /apiv1/compositions?compositionprefix={somecomposition}&performerprefix={someperformer}&firstid={id}&amount={amount}
@@ -43,12 +43,12 @@ apiv1/compositions/{id}/stream - хранятся композиции в вид
     {
         "compositions":[
             {
-                "ownerlogin":"vas",
-                "ownerid":5,
+                "login":"vas",
+                "userid":5,
                 "author":"Opus",
                 "performer":"Opus",
                 "name":"Life",
-                "id":1
+                "compositionid":1
             }
         ],
         "nextcompositionprefix":"Lif",
@@ -67,12 +67,12 @@ apiv1/compositions/{id}/stream - хранятся композиции в вид
 
 ##### Пример выходных данных:
     {
-        "ownerlogin":"vas",
-        "ownerid":5,
+        "login":"vas",
+        "userid":5,
         "author":"Opus",
         "performer":"Opus",
         "name":"Life",
-        "id":1
+        "compositionid":1
     }
 
 ### GET /apiv1/composition/{id}/stream
