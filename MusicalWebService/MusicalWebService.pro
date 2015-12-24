@@ -17,10 +17,6 @@ LIBS += \
  -lmongocxx \
  -lbsoncxx
 
-
-TEMPLATE = app
-
-
 SOURCES += \
     main.cpp \
     RequestHandler.cpp \

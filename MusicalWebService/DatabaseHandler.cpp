@@ -52,7 +52,7 @@ UserModel DatabaseHandler::createUser(std::string login, std::string password, s
 
     try
     {
-        auto res = db["Users"].insert_one(user_doc);
+        auto res = db["Users"].insert_one(std::move(user_doc));
         if (res->result().inserted_count() != 1)
         {
             userModel.isValid = false;
@@ -78,15 +78,10 @@ UserModel DatabaseHandler::getUserByLogin(std::string login)
     mongocxx::client conn{mongocxx::uri{}};
 
     auto db = conn["MusicalWebService"];
-
     UserModel userModel;
-
     bsoncxx::document::view user;
 
-    document filter;
-    filter << "login" << login;
-
-    auto cursor = db["Users"].find(filter);
+    auto cursor = db["Users"].find(document{} << "login" << login <<finalize);
     bool iterated = false;
     for (auto&& doc: cursor)
     {
@@ -134,7 +129,7 @@ UserModel DatabaseHandler::modifyToken(std::string login, std::string password, 
 
     try
     {
-        auto res = db["Users"].update_one(filter, update);
+        auto res = db["Users"].update_one(filter.view(), update.view());
         if (res->result().modified_count() != 1)
         {
             userModel.isValid = false;
