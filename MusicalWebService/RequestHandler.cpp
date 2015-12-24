@@ -1,7 +1,13 @@
 #include "RequestHandler.h"
 #include "UserModel.h"
 #include <regex>
+#include <fstream>
 #include <boost/algorithm/string.hpp>
+#include "rapidjson/document.h"
+#include "rapidjson/encodings.h"
+#include "rapidjson/prettywriter.h"
+#include "rapidjson/stringbuffer.h"
+#include "DatabaseHandler.h"
 
 bool RequestHandler::response()
 {
@@ -60,12 +66,15 @@ bool RequestHandler::response()
     out << "Content-Type: text/plain; charset=utf-8\r\n\r\n";
     out <<sb.GetString();*/
 
-    std::regex authRegex("/api/v1/users/[0-9a-z]+");
+
+    std::regex getUserRegex("/api/v1/users/[0-9a-z]+");
+    std::regex connectRegex("/api/v1/users/[0-9a-z]+/connect");
+    std::regex disconnectRegex("/api/v1/users/[0-9a-z]+/disconnect");
 
     switch (environment().requestMethod)
     {
     case Fastcgipp::Http::RequestMethod::HTTP_METHOD_GET:
-        if (std::regex_match(environment().scriptName, authRegex))
+        if (std::regex_match(environment().scriptName, getUserRegex))
             return getUser();
 
         break;
@@ -74,8 +83,11 @@ bool RequestHandler::response()
         if (environment().scriptName.compare("/api/v1/users") == 0)
             return addUser();
 
-        if (std::regex_match(environment().scriptName, authRegex))
-            return authorizeUser();
+        if (std::regex_match(environment().scriptName, connectRegex))
+            return connectUser();
+
+        if (std::regex_match(environment().scriptName, disconnectRegex))
+            return disconnectUser();
 
         break;
 
@@ -100,17 +112,11 @@ void RequestHandler::setHttpHeaders(std::string code)
     out << "Content-Type: application/json; charset=utf-8\r\n\r\n";
 }
 
-std::string RequestHandler::getId()
+std::string RequestHandler::getId(int offset = 0)
 {
     std::vector<std::string> parts;
     boost::split(parts, environment().scriptName, boost::is_any_of("/"));
-    return parts.back();
-}
-
-UserModel getUserModel()
-{
-    UserModel um;
-    return um;
+    return parts[parts.size() - 1 - offset];
 }
 
 bool RequestHandler::addUser()
@@ -121,12 +127,14 @@ bool RequestHandler::addUser()
         return true;
     }
 
+    std::string login = environment().findPost("login").value;
+    std::string password = environment().findPost("password").value;
     std::string aboutyourself;
 
     if (environment().checkForPost("aboutyourself"))
         aboutyourself = environment().findPost("aboutyourself").value;
 
-    UserModel user = getUserModel(); /*TO DO create user*/
+    UserModel user = DatabaseHandler::createUser(login, password, aboutyourself);
 
     if (!user.isValid)
     {
@@ -146,10 +154,11 @@ bool RequestHandler::addUser()
     writer.EndObject();
 
     setHttpHeaders("201 Created");
+    out << sb.GetString();
     return true;
 }
 
-bool RequestHandler::authorizeUser()
+bool RequestHandler::connectUser()
 {
     if (!environment().checkForPost("password"))
     {
@@ -157,11 +166,12 @@ bool RequestHandler::authorizeUser()
         return true;
     }
 
-    std::string login = getId();
+    std::string login = getId(1);
+    std::string password = environment().findPost("password").value;
 
-    UserModel user = getUserModel(); /*TO DO authorize user*/
+    UserModel user = DatabaseHandler::connect(login, password);
 
-    if (!user.isValid || !environment().findPost("password").value.compare(user.password))
+    if (!user.isValid)
     {
         setError("400 Bad Request");
         return true;
@@ -175,15 +185,47 @@ bool RequestHandler::authorizeUser()
     writer.EndObject();
 
     setHttpHeaders("200 OK");
+    out << sb.GetString();
     return true;
 }
+
+bool RequestHandler::disconnectUser()
+{
+    if (!environment().checkForPost("password"))
+    {
+        setError("400 Bad Request");
+        return true;
+    }
+
+    std::string login = getId(1);
+    std::string password = environment().findPost("password").value;
+
+    UserModel user = DatabaseHandler::disconnect(login, password);
+
+    if (!user.isValid)
+    {
+        setError("400 Bad Request");
+        return true;
+    }
+
+    rapidjson::StringBuffer sb;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
+    writer.StartObject();
+    writer.String("result");
+    writer.String("disconnected");
+    writer.EndObject();
+
+    setHttpHeaders("200 OK");
+    out << sb.GetString();
+    return true;
+}
+
 
 bool RequestHandler::getUser()
 {
     std::string login = getId();
 
-    UserModel user = getUserModel(); /*TO DO authorize user*/
-
+    UserModel user = DatabaseHandler::getUserByLogin(login);
     if (!user.isValid)
     {
         setError("404 Not Found");
@@ -200,5 +242,6 @@ bool RequestHandler::getUser()
     writer.EndObject();
 
     setHttpHeaders("200 OK");
+    out << sb.GetString();
     return true;
 }

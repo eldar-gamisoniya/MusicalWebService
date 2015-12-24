@@ -1,6 +1,9 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <stdio.h>
 #include "RequestHandler.h"
+#include <fastcgi++/manager.hpp>
+#include <fstream>
+#include <stdio.h>
 
 void error_log(const char* msg)
 {

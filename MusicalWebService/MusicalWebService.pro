@@ -4,19 +4,18 @@
 #
 #-------------------------------------------------
 
-QT       += core
-
-QT       -= gui
-
 TARGET = MusicalWebService
 CONFIG   += console
 CONFIG   -= app_bundle
+CONFIG   -= qt
 CONFIG   += c++11
 
 LIBS += \
  -lboost_system \
  -lboost_thread \
- -lfastcgipp
+ -lfastcgipp \
+ -lmongocxx \
+ -lbsoncxx
 
 
 TEMPLATE = app
