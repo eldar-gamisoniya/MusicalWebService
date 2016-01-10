@@ -12,11 +12,13 @@ class DatabaseHandler
 {
 private:
     static std::string newUuid();
-    static std::string stringElementToString(bsoncxx::document::element el);
+    static std::string elementToString(const bsoncxx::document::element& el);
+    static long elementToLong(const bsoncxx::document::element& el);
     static long currentTimestamp();
     static StaticConnection connection;
 
 public:
+    //User operations
     static std::vector<UserModel> getUsers(const std::string& loginRegex,const long timestampFrom, const long count);
     static UserModel createUser(const std::string& login,const std::string& password,
                                 const std::string& aboutYourSelf);
@@ -27,6 +29,9 @@ public:
     static UserModel getUserByLogin(const std::string& login);
     static UserModel createToken(const std::string& login, const std::string& password);
     static UserModel deleteToken(const std::string& login, const std::string& token);
+
+    //Music operations
+
 };
 
 #endif

@@ -11,6 +11,7 @@ public:
     std::string aboutYourSelf;
     std::string token;
     std::string id;
+    long timestamp;
     bool isValid;
 };
 
