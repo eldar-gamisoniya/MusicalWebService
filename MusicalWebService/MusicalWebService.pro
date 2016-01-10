@@ -20,9 +20,11 @@ LIBS += \
 SOURCES += \
     main.cpp \
     RequestHandler.cpp \
-    DatabaseHandler.cpp
+    DatabaseHandler.cpp \
+    StaticConnection.cpp
 
 HEADERS += \
     RequestHandler.h \
     DatabaseHandler.h \
-    UserModel.h
+    UserModel.h \
+    StaticConnection.h

@@ -53,7 +53,8 @@ bool RequestHandler::response()
     writer.String(environment().scriptName.c_str());
     if(environment().posts.size())
     {
-       for(Fastcgipp::Http::Environment<wchar_t>::Posts::const_iterator it=environment().posts.begin(); it!=environment().posts.end(); ++it)
+       for(Fastcgipp::Http::Environment<wchar_t>::Posts::const_iterator it=environment().posts.begin();
+it!=environment().posts.end(); ++it)
        {
            writer.String(L"first:");
            writer.String(it->first.c_str());
@@ -169,7 +170,7 @@ bool RequestHandler::connectUser()
     std::string login = getId(1);
     std::string password = environment().findPost("password").value;
 
-    UserModel user = DatabaseHandler::connect(login, password);
+    UserModel user = DatabaseHandler::createToken(login, password);
 
     if (!user.isValid)
     {
@@ -200,7 +201,7 @@ bool RequestHandler::disconnectUser()
     std::string login = getId(1);
     std::string password = environment().findPost("password").value;
 
-    UserModel user = DatabaseHandler::disconnect(login, password);
+    UserModel user = DatabaseHandler::deleteToken(login, password);
 
     if (!user.isValid)
     {

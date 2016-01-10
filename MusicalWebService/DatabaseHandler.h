@@ -2,21 +2,31 @@
 #define DATABASEHANDLER_H
 
 #include "UserModel.h"
+#include "StaticConnection.h"
 #include <string>
 #include <bsoncxx/builder/stream/document.hpp>
+#include <vector>
+
 
 class DatabaseHandler
 {
 private:
     static std::string newUuid();
-    static std::string elementToString(bsoncxx::document::element el);
-    static UserModel modifyToken(std::string login, std::string password, std::string newToken);
+    static std::string stringElementToString(bsoncxx::document::element el);
+    static long currentTimestamp();
+    static StaticConnection connection;
 
 public:
-    static UserModel createUser(std::string login, std::string password, std::string aboutYourSelf);
-    static UserModel getUserByLogin(std::string login);
-    static UserModel connect(std::string login, std::string password);
-    static UserModel disconnect(std::string login, std::string password);
+    static std::vector<UserModel> getUsers(const std::string& loginRegex,const long timestampFrom, const long count);
+    static UserModel createUser(const std::string& login,const std::string& password,
+                                const std::string& aboutYourSelf);
+    static UserModel modifyAboutYourSelf(const std::string& login, const std::string& token,
+                                         const std::string& aboutYourSelf);
+    static UserModel modifyPassword(const std::string& login, const std::string& token,
+                                    const std::string& oldPassword, const std::string& newPassword);
+    static UserModel getUserByLogin(const std::string& login);
+    static UserModel createToken(const std::string& login, const std::string& password);
+    static UserModel deleteToken(const std::string& login, const std::string& token);
 };
 
 #endif
