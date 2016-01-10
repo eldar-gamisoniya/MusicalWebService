@@ -66,13 +66,16 @@ std::vector<UserModel> DatabaseHandler::getUsers(const std::string& loginRegex, 
     auto db = conn["MusicalWebService"];
 
     document filter;
+
+    bsoncxx::types::b_date dateFrom(timestampFrom);
+
     if (id.size() > 0)
-        filter << "$or" << open_array << open_document << "timestamp" << timestampFrom
+        filter << "$or" << open_array << open_document << "timestamp" << dateFrom
                   << "_id" << open_document << "$gt" << bsoncxx::oid(id) << close_document << close_document
-                  << open_document << "timestamp" << open_document << "$gt" << timestampFrom
+                  << open_document << "timestamp" << open_document << "$gt" << dateFrom
                   << close_document << close_document << close_array;
     else
-        filter << "timestamp" << open_document << "$gte" << timestampFrom << close_document;
+        filter << "timestamp" << open_document << "$gte" << dateFrom << close_document;
 
     if (loginRegex.size() > 0)
         filter << "login" << open_document << "$regex" << loginRegex << close_document;
