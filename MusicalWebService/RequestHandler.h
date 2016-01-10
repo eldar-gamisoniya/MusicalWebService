@@ -18,6 +18,8 @@ private:
     bool disconnectUser();
     bool getUser();
 
+    bool writeMusic(const char* file, int size);
+
 public:
     bool response();
 };

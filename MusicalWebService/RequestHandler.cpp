@@ -44,6 +44,35 @@ bool RequestHandler::response()
     return true;
 }
 
+bool RequestHandler::writeMusic(const char* file, int size)
+{
+    int written = 0;
+    const char* current = file;
+
+    out << "Status: " << "200 OK" << "\r\n";
+    out << "Content-Type: audio/mpeg\r\n\r\n";
+
+    while (written < size)
+    {
+        int charsToWrite = strlen(current);
+
+        if (charsToWrite > 0)
+        {
+            out << current;
+            written += charsToWrite;
+            current += charsToWrite;
+        }
+        else
+        {
+            out << (char) 0;
+            written += 1;
+            current += 1;
+        }
+    }
+
+    return true;
+}
+
 void RequestHandler::setError(const std::string& error)
 {
     out << "Status: " << error << "\r\n";
