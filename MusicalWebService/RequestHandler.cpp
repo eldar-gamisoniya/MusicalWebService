@@ -3,73 +3,20 @@
 #include <regex>
 #include <fstream>
 #include <boost/algorithm/string.hpp>
+
 #include "rapidjson/document.h"
 #include "rapidjson/encodings.h"
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/stringbuffer.h"
 #include "DatabaseHandler.h"
+#include "ReturnCodes.h"
 
 bool RequestHandler::response()
 {
-    /*GenericDocument<UTF16<> > d;
-    //Document d;
+    static std::regex getUserRegex("/api/v1/users/[0-9a-z]+");
+    static std::regex tokenRegex("/api/v1/users/[0-9a-z]+/token");
 
-    d.SetObject();
-
-    Document::AllocatorType& allocator = d.GetAllocator();
-
-    wstring str = L"world";
-
-    d.AddMember(L"hello", StringRef(str.c_str()), allocator);
-    d.AddMember(L"uri", StringRef(environment().scriptName.c_str()), allocator);
-    d.AddMember(L"method", environment().requestMethod, allocator);
-
-    StringBuffer sb;
-    //PrettyWriter<StringBuffer> writer(sb);
-    PrettyWriter< StringBuffer, UTF16<> >  writerUTF16(sb);
-    //d.Accept(writer);
-    d.Accept(writerUTF16);
-
-    //writerUTF16.StartObject();
-
-    //writer.String("uri:");
-    //writer.String("123");
-    //wchar_t c[] = L"c";
-    //writerUTF16.String();
-    //writerUTF16.String(c);
-
-    //writer.EndObject();
-
-    out << "Status: 404 Not found\r\n\r\n";
-    out << "Content-Type: text/plain; charset=utf-8\r\n\r\n";
-    out << sb.GetString();
-
-    err << "Hello apache error log";*/
-
-    /*rapidjson::StringBuffer sb;
-    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF16<>> writer(sb);
-    writer.StartObject();
-    writer.String(L"uri:");
-    writer.String(environment().scriptName.c_str());
-    if(environment().posts.size())
-    {
-       for(Fastcgipp::Http::Environment<wchar_t>::Posts::const_iterator it=environment().posts.begin(); it!=environment().posts.end(); ++it)
-       {
-           writer.String(L"first:");
-           writer.String(it->first.c_str());
-           writer.String(L"second:");
-           writer.String(it->second.value.c_str());
-       }
-    }
-    writer.EndObject();
-    out << "Status: 200 OK\r\n\r\n";
-    out << "Content-Type: text/plain; charset=utf-8\r\n\r\n";
-    out <<sb.GetString();*/
-
-
-    std::regex getUserRegex("/api/v1/users/[0-9a-z]+");
-    std::regex connectRegex("/api/v1/users/[0-9a-z]+/connect");
-    std::regex disconnectRegex("/api/v1/users/[0-9a-z]+/disconnect");
+    static char usersUri[] = "/api/v1/users";
 
     switch (environment().requestMethod)
     {
@@ -77,38 +24,36 @@ bool RequestHandler::response()
         if (std::regex_match(environment().scriptName, getUserRegex))
             return getUser();
 
-        break;
-
     case Fastcgipp::Http::RequestMethod::HTTP_METHOD_POST:
-        if (environment().scriptName.compare("/api/v1/users") == 0)
+        if (environment().scriptName.compare(usersUri) == 0)
             return addUser();
 
-        if (std::regex_match(environment().scriptName, connectRegex))
+    case Fastcgipp::Http::RequestMethod::HTTP_METHOD_PUT:
+        if (std::regex_match(environment().scriptName, tokenRegex))
             return connectUser();
 
-        if (std::regex_match(environment().scriptName, disconnectRegex))
+    case Fastcgipp::Http::RequestMethod::HTTP_METHOD_DELETE:
+        if (std::regex_match(environment().scriptName, tokenRegex))
             return disconnectUser();
-
-        break;
 
     default:
         break;
     }
 
-    setError("404 Not Found");
+    setError(ReturnCodes::NOT_FOUND);
     return true;
 }
 
-void RequestHandler::setError(std::string error)
+void RequestHandler::setError(const std::string& error)
 {
-    out << "Status: " <<error <<"\r\n";
+    out << "Status: " << error << "\r\n";
     out << "Content-Type: text/plain; charset=utf-8\r\n\r\n";
     out << error;
 }
 
-void RequestHandler::setHttpHeaders(std::string code)
+void RequestHandler::setHttpHeaders(const std::string& code)
 {
-    out << "Status: " <<code <<"\r\n";
+    out << "Status: " << code << "\r\n";
     out << "Content-Type: application/json; charset=utf-8\r\n\r\n";
 }
 
@@ -123,7 +68,7 @@ bool RequestHandler::addUser()
 {
     if (!environment().checkForPost("login") || !environment().checkForPost("password"))
     {
-        setError("400 Bad Request");
+        setError(ReturnCodes::BAD_REQUEST);
         return true;
     }
 
@@ -138,7 +83,7 @@ bool RequestHandler::addUser()
 
     if (!user.isValid)
     {
-        setError("400 Bad Request");
+        setError(ReturnCodes::BAD_REQUEST);
         return true;
     }
 
@@ -153,7 +98,7 @@ bool RequestHandler::addUser()
     writer.String(user.aboutYourSelf.c_str());
     writer.EndObject();
 
-    setHttpHeaders("201 Created");
+    setHttpHeaders(ReturnCodes::CREATED);
     out << sb.GetString();
     return true;
 }
@@ -162,7 +107,7 @@ bool RequestHandler::connectUser()
 {
     if (!environment().checkForPost("password"))
     {
-        setError("400 Bad Request");
+        setError(ReturnCodes::BAD_REQUEST);
         return true;
     }
 
@@ -173,7 +118,7 @@ bool RequestHandler::connectUser()
 
     if (!user.isValid)
     {
-        setError("400 Bad Request");
+        setError(ReturnCodes::BAD_REQUEST);
         return true;
     }
 
@@ -184,7 +129,7 @@ bool RequestHandler::connectUser()
     writer.String(user.token.c_str());
     writer.EndObject();
 
-    setHttpHeaders("200 OK");
+    setHttpHeaders(ReturnCodes::OK);
     out << sb.GetString();
     return true;
 }
@@ -193,7 +138,7 @@ bool RequestHandler::disconnectUser()
 {
     if (!environment().checkForPost("password"))
     {
-        setError("400 Bad Request");
+        setError(ReturnCodes::BAD_REQUEST);
         return true;
     }
 
@@ -204,7 +149,7 @@ bool RequestHandler::disconnectUser()
 
     if (!user.isValid)
     {
-        setError("400 Bad Request");
+        setError(ReturnCodes::BAD_REQUEST);
         return true;
     }
 
@@ -215,7 +160,7 @@ bool RequestHandler::disconnectUser()
     writer.String("disconnected");
     writer.EndObject();
 
-    setHttpHeaders("200 OK");
+    setHttpHeaders(ReturnCodes::OK);
     out << sb.GetString();
     return true;
 }
@@ -224,11 +169,11 @@ bool RequestHandler::disconnectUser()
 bool RequestHandler::getUser()
 {
     std::string login = getId();
-
     UserModel user = DatabaseHandler::getUserByLogin(login);
+
     if (!user.isValid)
     {
-        setError("404 Not Found");
+        setError(ReturnCodes::NOT_FOUND);
         return true;
     }
 
@@ -241,7 +186,7 @@ bool RequestHandler::getUser()
     writer.String(user.aboutYourSelf.c_str());
     writer.EndObject();
 
-    setHttpHeaders("200 OK");
+    setHttpHeaders(ReturnCodes::OK);
     out << sb.GetString();
     return true;
 }
