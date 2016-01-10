@@ -15,8 +15,12 @@ bool RequestHandler::response()
     static std::regex userRegex("/api/v1/users/[0-9a-zA-Z]+");
     static std::regex tokensRegex("/api/v1/users/[0-9a-zA-Z]+/token");
     static std::regex tokenRegex("/api/v1/users/[0-9a-zA-Z]+/token/[0-9a-z\\-]+");
+    static std::regex passwordRegex("/api/v1/users/[0-9a-zA-Z]+/password");
 
     static char usersUri[] = "/api/v1/users";
+
+    /*static char test[300000];
+    static int size;*/
 
     switch (environment().requestMethod)
     {
@@ -26,6 +30,8 @@ bool RequestHandler::response()
 
         if (environment().scriptName.compare(usersUri) == 0)
             return getUsers();
+
+        //return writeMusic(test, size);
 
         break;
 
@@ -38,6 +44,16 @@ bool RequestHandler::response()
 
         if (std::regex_match(environment().scriptName, userRegex))
             return changeUserInfo();
+
+        if (std::regex_match(environment().scriptName, passwordRegex))
+            return changePassword();
+
+    /*{
+        size = environment().findPost("file").size();
+        memcpy(test, environment().findPost("file").data(), size);
+        setReturnCode("200 OK");
+        return true;
+    }*/
 
         break;
 
@@ -222,14 +238,13 @@ bool RequestHandler::getUser()
 bool RequestHandler::getUsers()
 {
     std::string loginRegex = environment().checkForGet("login") ? environment().findGet("login") : "";
-    std::string sinceId = environment().checkForGet("sinceid") ? environment().findGet("sinceid") : "";
-    long sinceDate = 0;
+    int skipCount = 0;
 
-    if (environment().checkForGet("sincedate"))
+    if (environment().checkForGet("skipcount"))
     {
         try
         {
-            sinceDate = std::stol(environment().findGet("sincedate"));
+            skipCount = std::stoi(environment().findGet("skipcount"));
         }
         catch (...)
         {
@@ -253,7 +268,7 @@ bool RequestHandler::getUsers()
         }
     }
 
-    std::vector<UserModel> users = DatabaseHandler::getUsers(loginRegex, sinceId, sinceDate, count);
+    std::vector<UserModel> users = DatabaseHandler::getUsers(loginRegex, skipCount, count);
     unsigned int usersCount = users.size();
 
     if (usersCount == 0)
@@ -275,15 +290,10 @@ bool RequestHandler::getUsers()
     }
 
     writer.EndArray();
-    UserModel lastUser = users.at(usersCount - 1);
-    std::string nextSinceId = lastUser.id;
-    writer.String("sinceid");
-    writer.String(nextSinceId.c_str());
-    long nextSinceDate = lastUser.timestamp;
-    writer.String("sincedate");
-    writer.Int64(nextSinceDate);
     writer.String("count");
     writer.Int(usersCount);
+    writer.String("nextSkipCount");
+    writer.Int(skipCount + usersCount);
     writer.EndObject();
 
     setHttpHeaders(ReturnCodes::OK);
@@ -309,6 +319,41 @@ bool RequestHandler::changeUserInfo()
     std::string token = environment().findPost("token").value;
     std::string aboutYourslef = environment().findPost("aboutyourself").value;
     UserModel user = DatabaseHandler::modifyAboutYourSelf(login, token, aboutYourslef);
+
+    if (!user.isValid)
+    {
+        setReturnCode(ReturnCodes::UNAUTHORIZED);
+        return true;
+    }
+
+    rapidjson::StringBuffer sb;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
+    writeUser(writer, user);
+    setHttpHeaders(ReturnCodes::OK);
+    out << sb.GetString();
+    return true;
+}
+
+bool RequestHandler::changePassword()
+{
+    if (!environment().checkForPost("token"))
+    {
+        setReturnCode(ReturnCodes::UNAUTHORIZED);
+        return true;
+    }
+
+    if (!environment().checkForPost("oldpassword") || !environment().checkForPost("newpassword"))
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
+    std::string token = environment().findPost("token").value;
+    std::string oldPassword = environment().findPost("oldpassword").value;
+    std::string newPassword = environment().findPost("newpassword").value;
+    std::string login = getId(1);
+
+    UserModel user = DatabaseHandler::modifyPassword(login, token, oldPassword, newPassword);
 
     if (!user.isValid)
     {

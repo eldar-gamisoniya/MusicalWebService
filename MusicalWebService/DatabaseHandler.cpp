@@ -66,8 +66,6 @@ std::vector<UserModel> DatabaseHandler::getUsers(const std::string& loginRegex, 
 
     document filter;
 
-    bsoncxx::types::b_date dateFrom(timestampFrom);
-
     if (loginRegex.size() > 0)
         filter << "login" << open_document << "$regex" << loginRegex << close_document;
 
