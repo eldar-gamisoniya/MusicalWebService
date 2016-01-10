@@ -19,8 +19,7 @@ bool RequestHandler::response()
 
     static char usersUri[] = "/api/v1/users";
 
-    /*static char test[300000];
-    static int size;*/
+    //static std::string test;
 
     switch (environment().requestMethod)
     {
@@ -31,7 +30,9 @@ bool RequestHandler::response()
         if (environment().scriptName.compare(usersUri) == 0)
             return getUsers();
 
-        //return writeMusic(test, size);
+    /*{
+        return writeMusic(test);
+    }*/
 
         break;
 
@@ -49,8 +50,8 @@ bool RequestHandler::response()
             return changePassword();
 
     /*{
-        size = environment().findPost("file").size();
-        memcpy(test, environment().findPost("file").data(), size);
+        int size = environment().findPost("file").size();
+        test = std::string(environment().findPost("file").data(), size);
         setReturnCode("200 OK");
         return true;
     }*/
@@ -71,32 +72,11 @@ bool RequestHandler::response()
     return true;
 }
 
-bool RequestHandler::writeMusic(const char* file, int size)
+bool RequestHandler::writeMusic(const std::string& file)
 {
-    int written = 0;
-    const char* current = file;
-
     out << "Status: " << "200 OK" << "\r\n";
     out << "Content-Type: audio/mpeg\r\n\r\n";
-
-    while (written < size)
-    {
-        int charsToWrite = strlen(current);
-
-        if (charsToWrite > 0)
-        {
-            out << current;
-            written += charsToWrite;
-            current += charsToWrite;
-        }
-        else
-        {
-            out << (char) 0;
-            written += 1;
-            current += 1;
-        }
-    }
-
+    out << file;
     return true;
 }
 

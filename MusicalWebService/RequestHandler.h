@@ -24,7 +24,7 @@ private:
 
     std::string getId(int offset);
 
-    bool writeMusic(const char* file, int size);
+    bool writeMusic(const std::string& file);
     void writeUser(rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>>& writer, UserModel& user);
 
 public:
