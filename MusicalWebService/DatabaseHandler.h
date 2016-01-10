@@ -13,7 +13,9 @@ class DatabaseHandler
 private:
     static std::string newUuid();
     static std::string elementToString(const bsoncxx::document::element& el);
+    static std::string elementToStringId(const bsoncxx::document::element& el);
     static long elementToLong(const bsoncxx::document::element& el);
+    static long elementToDate(const bsoncxx::document::element& el);
     static long currentTimestamp();
     static StaticConnection connection;
 
@@ -32,7 +34,6 @@ public:
     static UserModel deleteToken(const std::string& login, const std::string& token);
 
     //Music operations
-
 };
 
 #endif

@@ -34,12 +34,22 @@ std::string DatabaseHandler::newUuid()
 
 std::string DatabaseHandler::elementToString(const bsoncxx::document::element& el)
 {
-    return std::string(el.get_value().get_utf8().value);
+    return std::string(el.get_utf8().value);
+}
+
+std::string DatabaseHandler::elementToStringId(const bsoncxx::document::element& el)
+{
+    return el.get_oid().value.to_string();
 }
 
 long DatabaseHandler::elementToLong(const bsoncxx::document::element& el)
 {
-    return el.get_value().get_int64().value;
+    return el.get_int64().value;
+}
+
+long DatabaseHandler::elementToDate(const bsoncxx::document::element& el)
+{
+    return el.get_date().value;
 }
 
 long DatabaseHandler::currentTimestamp()
@@ -81,10 +91,11 @@ std::vector<UserModel> DatabaseHandler::getUsers(const std::string& loginRegex, 
     {
         UserModel model;
         model.login = elementToString(doc["login"]);
+        model.id = elementToStringId(doc["_id"]);
         model.password = elementToString(doc["password"]);
         model.aboutYourSelf = elementToString(doc["aboutyourself"]);
         model.token = elementToString(doc["token"]);
-        model.timestamp = elementToLong(doc["timestamp"]);
+        model.timestamp = elementToDate(doc["timestamp"]);
         v.push_back(std::move(model));
     }
 
@@ -104,7 +115,7 @@ UserModel DatabaseHandler::createUser(const std::string& login,const std::string
             << "password" << password
             << "aboutyourself" << aboutYourSelf
             << "token" << ""
-            << "timestamp" << timestamp
+            << "timestamp" << bsoncxx::types::b_date(timestamp)
             << finalize;
 
     UserModel userModel;
@@ -156,11 +167,12 @@ UserModel DatabaseHandler::getUserByLogin(const std::string& login)
         return userModel;
     }
 
+    userModel.id = elementToStringId(user["_id"]);
     userModel.login = login;
     userModel.password = elementToString(user["password"]);
     userModel.aboutYourSelf = elementToString(user["aboutyourself"]);
     userModel.token = elementToString(user["token"]);
-    userModel.timestamp = elementToLong(user["timestamp"]);
+    userModel.timestamp = elementToDate(user["timestamp"]);
     userModel.isValid = true;
     return userModel;
 }
