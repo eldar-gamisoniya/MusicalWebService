@@ -1,46 +1,57 @@
-#include "RequestHandler.h"
-#include "UserModel.h"
 #include <regex>
 #include <fstream>
 #include <boost/algorithm/string.hpp>
 
 #include "rapidjson/document.h"
 #include "rapidjson/encodings.h"
-#include "rapidjson/prettywriter.h"
 #include "rapidjson/stringbuffer.h"
+
+#include "RequestHandler.h"
 #include "DatabaseHandler.h"
 #include "ReturnCodes.h"
 
 bool RequestHandler::response()
 {
-    static std::regex getUserRegex("/api/v1/users/[0-9a-z]+");
-    static std::regex tokenRegex("/api/v1/users/[0-9a-z]+/token");
+    static std::regex userRegex("/api/v1/users/[0-9a-zA-Z]+");
+    static std::regex tokensRegex("/api/v1/users/[0-9a-zA-Z]+/token");
+    static std::regex tokenRegex("/api/v1/users/[0-9a-zA-Z]+/token/[0-9a-z\\-]+");
 
     static char usersUri[] = "/api/v1/users";
 
     switch (environment().requestMethod)
     {
     case Fastcgipp::Http::RequestMethod::HTTP_METHOD_GET:
-        if (std::regex_match(environment().scriptName, getUserRegex))
+        if (std::regex_match(environment().scriptName, userRegex))
             return getUser();
+
+        if (environment().scriptName.compare(usersUri) == 0)
+            return getUsers();
+
+        break;
 
     case Fastcgipp::Http::RequestMethod::HTTP_METHOD_POST:
         if (environment().scriptName.compare(usersUri) == 0)
             return addUser();
 
-    case Fastcgipp::Http::RequestMethod::HTTP_METHOD_PUT:
-        if (std::regex_match(environment().scriptName, tokenRegex))
+        if (std::regex_match(environment().scriptName, tokensRegex))
             return connectUser();
+
+        if (std::regex_match(environment().scriptName, userRegex))
+            return changeUserInfo();
+
+        break;
 
     case Fastcgipp::Http::RequestMethod::HTTP_METHOD_DELETE:
         if (std::regex_match(environment().scriptName, tokenRegex))
             return disconnectUser();
 
+        break;
+
     default:
         break;
     }
 
-    setError(ReturnCodes::NOT_FOUND);
+    setReturnCode(ReturnCodes::NOT_FOUND);
     return true;
 }
 
@@ -73,11 +84,11 @@ bool RequestHandler::writeMusic(const char* file, int size)
     return true;
 }
 
-void RequestHandler::setError(const std::string& error)
+void RequestHandler::setReturnCode(const std::string& code)
 {
-    out << "Status: " << error << "\r\n";
+    out << "Status: " << code << "\r\n";
     out << "Content-Type: text/plain; charset=utf-8\r\n\r\n";
-    out << error;
+    out << code;
 }
 
 void RequestHandler::setHttpHeaders(const std::string& code)
@@ -93,40 +104,49 @@ std::string RequestHandler::getId(int offset = 0)
     return parts[parts.size() - 1 - offset];
 }
 
-bool RequestHandler::addUser()
+void RequestHandler::writeUser(rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>>& writer, UserModel& user)
 {
-    if (!environment().checkForPost("login") || !environment().checkForPost("password"))
-    {
-        setError(ReturnCodes::BAD_REQUEST);
-        return true;
-    }
-
-    std::string login = environment().findPost("login").value;
-    std::string password = environment().findPost("password").value;
-    std::string aboutyourself;
-
-    if (environment().checkForPost("aboutyourself"))
-        aboutyourself = environment().findPost("aboutyourself").value;
-
-    UserModel user = DatabaseHandler::createUser(login, password, aboutyourself);
-
-    if (!user.isValid)
-    {
-        setError(ReturnCodes::BAD_REQUEST);
-        return true;
-    }
-
-    rapidjson::StringBuffer sb;
-    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
     writer.StartObject();
-    writer.String("userid");
+    writer.String("id");
     writer.String(user.id.c_str());
     writer.String("login");
     writer.String(user.login.c_str());
     writer.String("aboutyourself");
     writer.String(user.aboutYourSelf.c_str());
     writer.EndObject();
+}
 
+bool RequestHandler::addUser()
+{
+    if (!environment().checkForPost("login") || !environment().checkForPost("password"))
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
+    std::string login = environment().findPost("login").value;
+    std::string password = environment().findPost("password").value;
+    std::string aboutyourself = environment().checkForPost("aboutyourself") ? environment().findPost("aboutyourself").value : "";
+
+    static std::regex loginRegex("[0-9a-zA-Z]+");
+
+    if (!std::regex_match(login, loginRegex))
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
+    UserModel user = DatabaseHandler::createUser(login, password, aboutyourself);
+
+    if (!user.isValid)
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
+    rapidjson::StringBuffer sb;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
+    writeUser(writer, user);
     setHttpHeaders(ReturnCodes::CREATED);
     out << sb.GetString();
     return true;
@@ -136,7 +156,7 @@ bool RequestHandler::connectUser()
 {
     if (!environment().checkForPost("password"))
     {
-        setError(ReturnCodes::BAD_REQUEST);
+        setReturnCode(ReturnCodes::BAD_REQUEST);
         return true;
     }
 
@@ -147,14 +167,14 @@ bool RequestHandler::connectUser()
 
     if (!user.isValid)
     {
-        setError(ReturnCodes::BAD_REQUEST);
+        setReturnCode(ReturnCodes::BAD_REQUEST);
         return true;
     }
 
     rapidjson::StringBuffer sb;
     rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
     writer.StartObject();
-    writer.String("accesstoken");
+    writer.String("token");
     writer.String(user.token.c_str());
     writer.EndObject();
 
@@ -165,32 +185,17 @@ bool RequestHandler::connectUser()
 
 bool RequestHandler::disconnectUser()
 {
-    if (!environment().checkForPost("token"))
-    {
-        setError(ReturnCodes::BAD_REQUEST);
-        return true;
-    }
-
-    std::string login = getId(1);
-    std::string token = environment().findPost("token").value;
-
+    std::string login = getId(2);
+    std::string token = getId();
     UserModel user = DatabaseHandler::deleteToken(login, token);
 
     if (!user.isValid)
     {
-        setError(ReturnCodes::BAD_REQUEST);
+        setReturnCode(ReturnCodes::BAD_REQUEST);
         return true;
     }
 
-    rapidjson::StringBuffer sb;
-    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
-    writer.StartObject();
-    writer.String("result");
-    writer.String("disconnected");
-    writer.EndObject();
-
-    setHttpHeaders(ReturnCodes::OK);
-    out << sb.GetString();
+    setReturnCode(ReturnCodes::OK);
     return true;
 }
 
@@ -202,19 +207,118 @@ bool RequestHandler::getUser()
 
     if (!user.isValid)
     {
-        setError(ReturnCodes::NOT_FOUND);
+        setReturnCode(ReturnCodes::NOT_FOUND);
+        return true;
+    }
+
+    rapidjson::StringBuffer sb;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
+    writeUser(writer, user);
+    setHttpHeaders(ReturnCodes::OK);
+    out << sb.GetString();
+    return true;
+}
+
+bool RequestHandler::getUsers()
+{
+    std::string loginRegex = environment().checkForGet("login") ? environment().findGet("login") : "";
+    std::string sinceId = environment().checkForGet("sinceid") ? environment().findGet("sinceid") : "";
+    long sinceDate = 0;
+
+    if (environment().checkForGet("sincedate"))
+    {
+        try
+        {
+            sinceDate = std::stol(environment().findGet("sincedate"));
+        }
+        catch (...)
+        {
+            setReturnCode(ReturnCodes::BAD_REQUEST);
+            return true;
+        }
+    }
+
+    int count = 10;
+
+    if (environment().checkForGet("count"))
+    {
+        try
+        {
+            count = std::stoi(environment().findGet("count"));
+        }
+        catch (...)
+        {
+            setReturnCode(ReturnCodes::BAD_REQUEST);
+            return true;
+        }
+    }
+
+    std::vector<UserModel> users = DatabaseHandler::getUsers(loginRegex, sinceId, sinceDate, count);
+    unsigned int usersCount = users.size();
+
+    if (usersCount == 0)
+    {
+        setReturnCode(ReturnCodes::NO_CONTENT);
         return true;
     }
 
     rapidjson::StringBuffer sb;
     rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
     writer.StartObject();
-    writer.String("login");
-    writer.String(user.login.c_str());
-    writer.String("aboutyourself");
-    writer.String(user.aboutYourSelf.c_str());
+    writer.String("users");
+    writer.StartArray();
+
+    for (unsigned int i = 0; i < usersCount; ++i)
+    {
+        UserModel user = users.at(i);
+        writeUser(writer, user);
+    }
+
+    writer.EndArray();
+    UserModel lastUser = users.at(usersCount - 1);
+    std::string nextSinceId = lastUser.id;
+    writer.String("sinceid");
+    writer.String(nextSinceId.c_str());
+    long nextSinceDate = lastUser.timestamp;
+    writer.String("sincedate");
+    writer.Int64(nextSinceDate);
+    writer.String("count");
+    writer.Int(usersCount);
     writer.EndObject();
 
+    setHttpHeaders(ReturnCodes::OK);
+    out << sb.GetString();
+    return true;
+}
+
+bool RequestHandler::changeUserInfo()
+{
+    if (!environment().checkForPost("token"))
+    {
+        setReturnCode(ReturnCodes::UNAUTHORIZED);
+        return true;
+    }
+
+    if (!environment().checkForPost("aboutyourself"))
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
+    std::string login = getId();
+    std::string token = environment().findPost("token").value;
+    std::string aboutYourslef = environment().findPost("aboutyourself").value;
+    UserModel user = DatabaseHandler::modifyAboutYourSelf(login, token, aboutYourslef);
+
+    if (!user.isValid)
+    {
+        setReturnCode(ReturnCodes::UNAUTHORIZED);
+        return true;
+    }
+
+    rapidjson::StringBuffer sb;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
+    writeUser(writer, user);
     setHttpHeaders(ReturnCodes::OK);
     out << sb.GetString();
     return true;
