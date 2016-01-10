@@ -2,10 +2,12 @@
 #define DATABASEHANDLER_H
 
 #include "UserModel.h"
+#include "AudioModel.h"
 #include "StaticConnection.h"
 #include <string>
 #include <bsoncxx/builder/stream/document.hpp>
 #include <vector>
+#include <memory>
 
 
 class DatabaseHandler
@@ -33,7 +35,11 @@ public:
     static UserModel deleteToken(const std::string& login, const std::string& token);
 
     //Music operations
-
+    static AudioModel createAudio(const std::string& owner, const std::string& name, const std::string& description,
+                                  const unsigned char* data, const int size);
+    static std::shared_ptr<AudioModel> getAudio(const std::string& id);
+    static std::vector<AudioModel> getAudios(const std::string& nameRegex, const std::string& ownerRegex,
+                                             const int skipCount, const int count);
 };
 
 #endif

@@ -89,6 +89,7 @@ std::vector<UserModel> DatabaseHandler::getUsers(const std::string& loginRegex, 
         model.aboutYourSelf = elementToString(doc["aboutyourself"]);
         model.token = elementToString(doc["token"]);
         model.timestamp = elementToDate(doc["timestamp"]);
+        model.isValid = true;
         v.push_back(std::move(model));
     }
 
@@ -342,4 +343,128 @@ UserModel DatabaseHandler::modifyPassword(const std::string& login, const std::s
     userModel.password = newPassword;
     userModel.isValid = true;
     return userModel;
+}
+
+
+
+AudioModel DatabaseHandler::createAudio(const std::string& owner, const std::string& name, const std::string& description,
+                              const unsigned char* data, const int size)
+{
+    mongocxx::client& conn = connection.getConnection();
+    auto db = conn["MusicalWebService"];
+
+    long timestamp  = currentTimestamp();
+
+    bsoncxx::types::b_binary b_data;
+    b_data.bytes = data;
+    b_data.size = size;
+
+    auto audio_doc = document{}
+            << "owner" << owner
+            << "name" << name
+            << "description" << description
+            << "data" << b_data
+            << "timestamp" << bsoncxx::types::b_date(timestamp)
+            << finalize;
+
+    AudioModel audioModel;
+
+    try
+    {
+        auto res = db["Audios"].insert_one(std::move(audio_doc));
+        if (res->result().inserted_count() != 1)
+        {
+            audioModel.isValid = false;
+            return audioModel;
+        }
+        audioModel.id = res->inserted_id().get_oid().value.to_string();
+    }
+    catch(...)
+    {
+        audioModel.isValid = false;
+        return audioModel;
+    }
+    audioModel.isValid = true;
+    audioModel.owner = owner;
+    audioModel.name = name;
+    audioModel.description = description;
+    audioModel.timestamp = timestamp;
+    return audioModel;
+}
+
+std::shared_ptr<AudioModel> DatabaseHandler::getAudio(const std::string& id)
+{
+    mongocxx::client& conn = connection.getConnection();
+
+    auto db = conn["MusicalWebService"];
+
+    std::shared_ptr<AudioModel> audioModel(new AudioModel);
+    bsoncxx::document::view audio;
+
+    auto cursor = db["Audios"].find(document{} << "_id" << bsoncxx::oid(id) <<finalize);
+    bool iterated = false;
+    for (auto&& doc: cursor)
+    {
+        iterated = true;
+        audio = doc;
+        break;
+    }
+
+    if (!iterated)
+    {
+        audioModel->isValid = false;
+        return audioModel;
+    }
+
+    audioModel->id = id;
+    audioModel->owner = elementToString(audio["owner"]);
+    audioModel->name = elementToString(audio["name"]);
+    audioModel->description = elementToString(audio["description"]);
+    audioModel->timestamp = elementToDate(audio["timestamp"]);
+    const bsoncxx::types::b_binary& data = audio["data"].get_binary();
+    audioModel->data = std::string((const char*)data.bytes, data.size);
+    audioModel->isValid = true;
+    return audioModel;
+}
+
+std::vector<AudioModel> DatabaseHandler::getAudios(const std::string& nameRegex, const std::string& ownerRegex,
+                                         const int skipCount, const int count)
+{
+    mongocxx::client& conn = connection.getConnection();
+    auto db = conn["MusicalWebService"];
+
+    document filter;
+
+    if (nameRegex.size() > 0)
+        filter << "name" << open_document << "$regex" << nameRegex << close_document;
+    if (ownerRegex.size() > 0)
+        filter << "owner" << open_document << "$regex" << ownerRegex << close_document;
+
+    mongocxx::options::find options;
+    document order;
+    order << "timestamp" << 1 << "_id" << 1;
+    options.sort(order.view());
+    document projection;;
+    projection << "data" << -1;
+    options.projection(projection.view());
+    options.limit(count);
+    options.skip(skipCount);
+
+    auto cursor = db["Audios"].find(filter.view(), options);
+
+    std::vector<AudioModel> v;
+
+    for (auto&& doc: cursor)
+    {
+        AudioModel audioModel;
+        audioModel.id = elementToStringId(doc["_id"]);
+        audioModel.owner = elementToString(doc["owner"]);
+        audioModel.name = elementToString(doc["name"]);
+        audioModel.description = elementToString(doc["description"]);
+        audioModel.timestamp = elementToDate(doc["timestamp"]);
+        audioModel.isValid = true;
+        v.push_back(std::move(audioModel));
+    }
+
+    return v;
 }
