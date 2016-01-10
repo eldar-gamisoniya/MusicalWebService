@@ -19,7 +19,8 @@ private:
 
 public:
     //User operations
-    static std::vector<UserModel> getUsers(const std::string& loginRegex,const long timestampFrom, const long count);
+    static std::vector<UserModel> getUsers(const std::string& loginRegex, const std::string& id,
+                                           const long timestampFrom, const long count);
     static UserModel createUser(const std::string& login,const std::string& password,
                                 const std::string& aboutYourSelf);
     static UserModel modifyAboutYourSelf(const std::string& login, const std::string& token,

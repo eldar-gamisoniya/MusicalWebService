@@ -49,20 +49,27 @@ long DatabaseHandler::currentTimestamp()
     return ms.count();
 }
 
-std::vector<UserModel> DatabaseHandler::getUsers(const std::string& loginRegex,const long timestampFrom,
-                                                const long count)
+std::vector<UserModel> DatabaseHandler::getUsers(const std::string& loginRegex, const std::string& id,
+                                                 const long timestampFrom, const long count)
 {
     mongocxx::client& conn = connection.getConnection();
     auto db = conn["MusicalWebService"];
 
     document filter;
-    filter << "timestamp" << open_document << "$gt" << timestampFrom << close_document;
+    if (id.size() > 0)
+        filter << "$or" << open_array << open_document << "timestamp" << timestampFrom
+                  << "_id" << open_document << "$gt" << bsoncxx::oid(id) << close_document << close_document
+                  << open_document << "timestamp" << open_document << "$gt" << timestampFrom
+                  << close_document << close_document << close_array;
+    else
+        filter << "timestamp" << open_document << "$gte" << timestampFrom << close_document;
+
     if (loginRegex.size() > 0)
         filter << "login" << open_document << "$regex" << loginRegex << close_document;
 
     mongocxx::options::find options;
     document order;
-    order << "timestamp" << 1 << "login" << 1;
+    order << "timestamp" << 1 << "_id" << 1;
     options.sort(order.view());
     options.limit(count);
 
