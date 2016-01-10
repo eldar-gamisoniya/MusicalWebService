@@ -29,4 +29,5 @@ HEADERS += \
     DatabaseHandler.h \
     UserModel.h \
     StaticConnection.h \
-    ReturnCodes.h
+    ReturnCodes.h \
+    AudioModel.h
