@@ -9,14 +9,16 @@
 class RequestHandler: public Fastcgipp::Request<char>
 {
 private:
-    void setError(std::string error);
-    void setHttpHeaders(std::string code);
+    void setError(const std::string& error);
+    void setHttpHeaders(const std::string& code);
 
     std::string getId(int offset);
     bool addUser();
     bool connectUser();
     bool disconnectUser();
     bool getUser();
+
+    bool writeMusic(const char* file, int size);
 
 public:
     bool response();

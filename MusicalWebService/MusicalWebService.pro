@@ -21,10 +21,12 @@ SOURCES += \
     main.cpp \
     RequestHandler.cpp \
     DatabaseHandler.cpp \
-    StaticConnection.cpp
+    StaticConnection.cpp \
+    ReturnCodes.cpp
 
 HEADERS += \
     RequestHandler.h \
     DatabaseHandler.h \
     UserModel.h \
-    StaticConnection.h
+    StaticConnection.h \
+    ReturnCodes.h
