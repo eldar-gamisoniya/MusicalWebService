@@ -3,6 +3,7 @@
 
 #include "UserModel.h"
 #include "AudioModel.h"
+#include "PlaylistModel.h"
 #include "StaticConnection.h"
 #include <string>
 #include <bsoncxx/builder/stream/document.hpp>
@@ -34,12 +35,24 @@ public:
     static UserModel createToken(const std::string& login, const std::string& password);
     static UserModel deleteToken(const std::string& login, const std::string& token);
 
-    //Music operations
+    //Audio operations
     static AudioModel createAudio(const std::string& owner, const std::string& name, const std::string& description,
                                   const unsigned char* data, const int size);
     static std::shared_ptr<AudioModel> getAudio(const std::string& id, bool getData);
     static std::vector<AudioModel> getAudios(const std::string& nameRegex, const std::string& ownerRegex,
                                              const int skipCount, const int count);
-};
 
+    //Playlist operations
+    static std::vector <PlaylistModel> getPlaylists(const std::string& nameRegex, const std::string& ownerRegex,
+                                                    const int skipCount, const int count);
+    static PlaylistModel getPlaylist(const std::string& id);
+    static PlaylistModel addAudioToPlaylist(const std::string& audioId, const std::string& compositionId,
+                                            const std::string& login);
+    static PlaylistModel deleteAutioFromPlaylist(const std::string& audioId, const std::string& compositionId,
+                                                 const std::string& login);
+    static PlaylistModel createPlaylist(const std::string& name, const std::string& copyingId,
+                                        const std::string& login);
+    static PlaylistModel deletePlaylist(const std::string& id);
+
+};
 #endif

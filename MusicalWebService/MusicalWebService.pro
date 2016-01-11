@@ -30,4 +30,5 @@ HEADERS += \
     UserModel.h \
     StaticConnection.h \
     ReturnCodes.h \
-    AudioModel.h
+    AudioModel.h \
+    PlaylistModel.h

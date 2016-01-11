@@ -480,3 +480,4 @@ std::vector<AudioModel> DatabaseHandler::getAudios(const std::string& nameRegex,
 
     return v;
 }
+
