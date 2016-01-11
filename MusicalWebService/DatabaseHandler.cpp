@@ -481,3 +481,136 @@ std::vector<AudioModel> DatabaseHandler::getAudios(const std::string& nameRegex,
     return v;
 }
 
+PlaylistModel DatabaseHandler::getPlaylist(const std::string& id)
+{
+    mongocxx::client& conn = connection.getConnection();
+    auto db = conn["MusicalWebService"];
+
+    PlaylistModel playlistModel;
+    bsoncxx::document::view playlist;
+
+    auto cursor = db["Playlists"].find(document{} << "_id" << id <<finalize);
+    bool iterated = false;
+    for (auto&& doc: cursor)
+    {
+        iterated = true;
+        playlist = doc;
+        break;
+    }
+
+    if (!iterated)
+    {
+        playlistModel.isValid = false;
+        return playlistModel;
+    }
+
+    playlistModel.id = id;
+    playlistModel.description = elementToString(playlist["description"]);
+    playlistModel.name = elementToString(playlist["name"]);
+    playlistModel.owner = elementToString(playlist["owner"]);
+    playlistModel.timestamp = elementToDate(playlist["timestamp"]);
+
+    auto arr = playlist["audios"].get_array().value;
+
+    for (auto i = arr.cbegin(); i != arr.cend(); i++)
+    {
+        AudioModel audioModel;
+        auto doc = (*i).get_document().value;
+        audioModel.name = elementToString(doc["name"]);
+        audioModel.owner = elementToString(doc["owner"]);
+        audioModel.id = elementToStringId(doc["_id"]);
+        audioModel.description = elementToStringId(doc["description"]);
+        audioModel.timestamp = elementToDate(doc["timestamp"]);
+        playlistModel.audios.push_back(audioModel);
+    }
+
+    playlistModel.isValid = true;
+    return playlistModel;
+}
+
+PlaylistModel DatabaseHandler::createPlaylist(const std::string& name, const std::string& copyingId,
+                                    const std::string& owner, const std::string& description)
+{
+    mongocxx::client& conn = connection.getConnection();
+    auto db = conn["MusicalWebService"];
+
+    long timestamp  = currentTimestamp();
+
+    auto playlistDoc = document{}
+                << "owner" << owner
+                << "name" << name
+                << "description" << description
+                << "audios" << open_array;
+
+    PlaylistModel playlistModel;
+
+    if (copyingId.size() > 0)
+    {
+        playlistModel = getPlaylist(copyingId);
+        for (unsigned int i = 0; i < playlistModel.audios.size(); ++i)
+        {
+            playlistDoc << open_document
+                         << "_id" << bsoncxx::oid(playlistModel.audios[i].id)
+                         << "owner" << playlistModel.audios[i].owner
+                         << "name" << playlistModel.audios[i].name
+                         << "description" << playlistModel.audios[i].description
+                         << "timestamp" << bsoncxx::types::b_date(playlistModel.audios[i].timestamp)
+                         << close_document;
+        }
+    }
+
+    playlistDoc << close_array
+    << "timestamp" << bsoncxx::types::b_date(timestamp)
+    << finalize;
+
+    try
+    {
+        auto res = db["Playlists"].insert_one(((document*) &playlistDoc)->view());
+        if (res->result().inserted_count() != 1)
+        {
+            playlistModel.isValid = false;
+            return playlistModel;
+        }
+        playlistModel.id = res->inserted_id().get_oid().value.to_string();
+    }
+    catch(...)
+    {
+        playlistModel.isValid = false;
+        return playlistModel;
+    }
+    playlistModel.isValid = true;
+    playlistModel.owner = owner;
+    playlistModel.name = name;
+    playlistModel.description = description;
+    playlistModel.timestamp = timestamp;
+    return playlistModel;
+}
+
+std::vector <PlaylistModel> DatabaseHandler::getPlaylists(const std::string& nameRegex, const std::string& ownerRegex,
+                                                const int skipCount, const int count)
+{
+    return std::vector<PlaylistModel>();
+}
+
+PlaylistModel DatabaseHandler::addAudioToPlaylist(const std::string& audioId, const std::string& playlistId,
+                                        const std::string& owner)
+{
+    PlaylistModel model;
+    model.isValid = false;
+    return model;
+}
+
+PlaylistModel DatabaseHandler::deleteAudioFromPlaylist(const std::string& audioId, const std::string& playlistId,
+                                             const std::string& owner)
+{
+    PlaylistModel model;
+    model.isValid = false;
+    return model;
+}
+
+PlaylistModel DatabaseHandler::deletePlaylist(const std::string& id, const std::string& owner)
+{
+    PlaylistModel model;
+    model.isValid = false;
+    return model;
+}

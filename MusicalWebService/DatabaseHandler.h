@@ -47,12 +47,11 @@ public:
                                                     const int skipCount, const int count);
     static PlaylistModel getPlaylist(const std::string& id);
     static PlaylistModel addAudioToPlaylist(const std::string& audioId, const std::string& playlistId,
-                                            const std::string& login);
+                                            const std::string& owner);
     static PlaylistModel deleteAudioFromPlaylist(const std::string& audioId, const std::string& playlistId,
-                                                 const std::string& login);
+                                                 const std::string& owner);
     static PlaylistModel createPlaylist(const std::string& name, const std::string& copyingId,
-                                        const std::string& login, const std::string& description);
-    static PlaylistModel deletePlaylist(const std::string& id);
-
+                                        const std::string& owner, const std::string& description);
+    static PlaylistModel deletePlaylist(const std::string& id, const std::string& owner);
 };
 #endif
