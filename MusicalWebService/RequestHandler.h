@@ -29,7 +29,12 @@ private:
     bool getAudios();
     bool getStream();
 
+    bool addPlaylist();
     bool getPlaylists();
+    bool getPlaylist();
+    bool deletePlaylist();
+    bool addAudioToPlaylist();
+    bool deleteAudioFromPlaylist();
 
     std::string getId(int offset);
     bool checkUser();

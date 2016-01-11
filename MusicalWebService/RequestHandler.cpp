@@ -18,6 +18,10 @@ bool RequestHandler::response()
     static std::regex passwordRegex("/api/v1/users/[0-9a-zA-Z]+/password");
     static std::regex audioRegex("/api/v1/audios/[0-9a-z]+");
     static std::regex streamRegex("/api/v1/audios/[0-9a-z]+/stream");
+    static std::regex playlistRegex("/api/v1/playlists/[0-9a-z]+");
+    static std::regex playlistAudiosRegex("/api/v1/playlists/[0-9a-z]+/audios");
+    static std::regex playlistAudioRegex("/api/v1/playlists/[0-9a-z]+/audios/[0-9a-z]+");
+
 
     static char usersUri[] = "/api/v1/users";
     static char audiosUri[] = "/api/v1/audios";
@@ -45,6 +49,9 @@ bool RequestHandler::response()
 
         if (std::regex_match(environment().scriptName, streamRegex))
             return getStream();
+
+        if (std::regex_match(environment().scriptName, playlistRegex))
+            return getPlaylist();
     /*{
         return writeMusic(test);
     }*/
@@ -58,6 +65,9 @@ bool RequestHandler::response()
         if (environment().scriptName.compare(audiosUri) == 0)
             return addAudio();
 
+        if (environment().scriptName.compare(playlistsUri) == 0)
+            return addPlaylist();
+
         if (std::regex_match(environment().scriptName, tokensRegex))
             return connectUser();
 
@@ -67,6 +77,14 @@ bool RequestHandler::response()
         if (std::regex_match(environment().scriptName, passwordRegex))
             return changePassword();
 
+        if (std::regex_match(environment().scriptName, playlistRegex))
+            return deletePlaylist();
+
+        if (std::regex_match(environment().scriptName, playlistAudiosRegex))
+            return addAudioToPlaylist();
+
+        if (std::regex_match(environment().scriptName, playlistAudioRegex))
+            return deleteAudioFromPlaylist();
     /*{
         int size = environment().findPost("file").size();
         test = std::string(environment().findPost("file").data(), size);
@@ -250,7 +268,14 @@ bool RequestHandler::disconnectUser()
         return true;
     }
 
+    rapidjson::StringBuffer sb;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
+    writer.StartObject();
+    writer.String("deleted");
+    writer.String("ok");
+    writer.EndObject();
     setReturnCode(ReturnCodes::OK);
+    out << sb.GetString();
     return true;
 }
 
@@ -566,12 +591,6 @@ bool RequestHandler::getStream()
 
 bool RequestHandler::getPlaylists()
 {
-    if (!checkUser())
-    {
-        setReturnCode(ReturnCodes::UNAUTHORIZED);
-        return true;
-    }
-
     std::string nameRegex = environment().checkForGet("name") ? environment().findGet("name") : "";
     std::string ownerRegex = environment().checkForGet("owner") ? environment().findGet("owner") : "";
     int skipCount = 0;
@@ -636,6 +655,147 @@ bool RequestHandler::getPlaylists()
     writer.EndObject();
 
     setHttpHeaders(ReturnCodes::OK);
+    out << sb.GetString();
+    return true;
+}
+
+bool RequestHandler::addPlaylist()
+{
+    if (!checkUser())
+    {
+        setReturnCode(ReturnCodes::UNAUTHORIZED);
+        return true;
+    }
+
+    if (!environment().checkForPost("name"))
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
+    std::string owner = environment().findPost("login").value;
+    std::string name = environment().findPost("name").value;
+    std::string description = environment().checkForPost("description") ? environment().findPost("description").value : "";
+    std::string id = environment().checkForPost("id") ? environment().findPost("id").value : "";
+    PlaylistModel playlist = DatabaseHandler::createPlaylist(name, id, owner, description);
+
+    if (!playlist.isValid)
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
+    rapidjson::StringBuffer sb;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
+    writePlaylist(writer, playlist, true);
+    setHttpHeaders(ReturnCodes::CREATED);
+    out << sb.GetString();
+    return true;
+}
+
+bool RequestHandler::getPlaylist()
+{
+    std::string playlistId = getId();
+    PlaylistModel playlist = DatabaseHandler::getPlaylist(playlistId);
+
+    if (!playlist.isValid)
+    {
+        setReturnCode(ReturnCodes::NOT_FOUND);
+        return true;
+    }
+
+    rapidjson::StringBuffer sb;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
+    writePlaylist(writer, playlist, true);
+    setHttpHeaders(ReturnCodes::OK);
+    out << sb.GetString();
+    return true;
+}
+
+bool RequestHandler::deletePlaylist()
+{
+    if (!checkUser())
+    {
+        setReturnCode(ReturnCodes::UNAUTHORIZED);
+        return true;
+    }
+
+    std::string playlistId = getId();
+    PlaylistModel playlist = DatabaseHandler::deletePlaylist(playlistId);
+
+    if (!playlist.isValid)
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
+    rapidjson::StringBuffer sb;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
+    writer.StartObject();
+    writer.String("deleted");
+    writer.String("ok");
+    writer.EndObject();
+    setReturnCode(ReturnCodes::OK);
+    out << sb.GetString();
+    return true;
+}
+
+bool RequestHandler::addAudioToPlaylist()
+{
+    if (!checkUser())
+    {
+        setReturnCode(ReturnCodes::UNAUTHORIZED);
+        return true;
+    }
+
+    if (!environment().checkForPost("audioid"))
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
+    std::string audioId = environment().findPost("audioid").value;
+    std::string playlistId = getId(1);
+    std::string login = environment().findPost("login").value;
+    PlaylistModel playlist = DatabaseHandler::addAudioToPlaylist(audioId, playlistId, login);
+
+    if (!playlist.isValid)
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
+    rapidjson::StringBuffer sb;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
+    writePlaylist(writer, playlist, true);
+    setHttpHeaders(ReturnCodes::CREATED);
+    out << sb.GetString();
+    return true;
+}
+
+bool RequestHandler::deleteAudioFromPlaylist()
+{
+    if (!checkUser())
+    {
+        setReturnCode(ReturnCodes::UNAUTHORIZED);
+        return true;
+    }
+
+    std::string audioId = getId();
+    std::string playlistId = getId(2);
+    std::string login = environment().findPost("login").value;
+    PlaylistModel playlist = DatabaseHandler::deleteAudioFromPlaylist(audioId, playlistId, login);
+
+    if (!playlist.isValid)
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
+    rapidjson::StringBuffer sb;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
+    writePlaylist(writer, playlist, true);
+    setHttpHeaders(ReturnCodes::CREATED);
     out << sb.GetString();
     return true;
 }

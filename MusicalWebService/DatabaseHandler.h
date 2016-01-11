@@ -46,9 +46,9 @@ public:
     static std::vector <PlaylistModel> getPlaylists(const std::string& nameRegex, const std::string& ownerRegex,
                                                     const int skipCount, const int count);
     static PlaylistModel getPlaylist(const std::string& id);
-    static PlaylistModel addAudioToPlaylist(const std::string& audioId, const std::string& compositionId,
+    static PlaylistModel addAudioToPlaylist(const std::string& audioId, const std::string& playlistId,
                                             const std::string& login);
-    static PlaylistModel deleteAutioFromPlaylist(const std::string& audioId, const std::string& compositionId,
+    static PlaylistModel deleteAudioFromPlaylist(const std::string& audioId, const std::string& playlistId,
                                                  const std::string& login);
     static PlaylistModel createPlaylist(const std::string& name, const std::string& copyingId,
                                         const std::string& login, const std::string& description);
