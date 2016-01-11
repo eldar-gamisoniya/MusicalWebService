@@ -51,7 +51,7 @@ public:
     static PlaylistModel deleteAutioFromPlaylist(const std::string& audioId, const std::string& compositionId,
                                                  const std::string& login);
     static PlaylistModel createPlaylist(const std::string& name, const std::string& copyingId,
-                                        const std::string& login);
+                                        const std::string& login, const std::string& description);
     static PlaylistModel deletePlaylist(const std::string& id);
 
 };
