@@ -38,6 +38,9 @@ bool RequestHandler::response()
 
         if (std::regex_match(environment().scriptName, audioRegex))
             return getAudio();
+
+        if (std::regex_match(environment().scriptName, streamRegex))
+            return getStream();
     /*{
         return writeMusic(test);
     }*/
@@ -273,6 +276,12 @@ bool RequestHandler::getUsers()
         }
     }
 
+    if (count <= 0 || skipCount < 0)
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
     std::vector<UserModel> users = DatabaseHandler::getUsers(loginRegex, skipCount, count);
     unsigned int usersCount = users.size();
 
@@ -431,7 +440,7 @@ bool RequestHandler::getAudio()
 
     if (!audio->isValid)
     {
-        setReturnCode(ReturnCodes::BAD_REQUEST);
+        setReturnCode(ReturnCodes::NOT_FOUND);
         return true;
     }
 
@@ -477,6 +486,12 @@ bool RequestHandler::getAudios()
         }
     }
 
+    if (count <= 0 || skipCount < 0)
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
     std::vector<AudioModel> audios = DatabaseHandler::getAudios(nameRegex, ownerRegex, skipCount, count);
     unsigned int audiosCount = audios.size();
 
@@ -508,4 +523,18 @@ bool RequestHandler::getAudios()
     setHttpHeaders(ReturnCodes::OK);
     out << sb.GetString();
     return true;
+}
+
+bool RequestHandler::getStream()
+{
+    std::string id = getId(1);
+    std::shared_ptr<AudioModel> stream = DatabaseHandler::getAudio(id, true);
+
+    if (!stream->isValid)
+    {
+        setReturnCode(ReturnCodes::NOT_FOUND);
+        return true;
+    }
+
+    return writeMusic(stream->data);
 }
