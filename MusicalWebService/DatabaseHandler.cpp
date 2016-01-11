@@ -405,8 +405,8 @@ std::shared_ptr<AudioModel> DatabaseHandler::getAudio(const std::string& id, boo
 
     if (!getData)
     {
-        document projection;;
-        projection << "data" << -1;
+        document projection;
+        projection << "data" << 0 << finalize;
         options.projection(projection.view());
     }
 
@@ -457,7 +457,7 @@ std::vector<AudioModel> DatabaseHandler::getAudios(const std::string& nameRegex,
     order << "timestamp" << 1 << "_id" << 1;
     options.sort(order.view());
     document projection;;
-    projection << "data" << -1;
+    projection << "data" << 0 << finalize;
     options.projection(projection.view());
     options.limit(count);
     options.skip(skipCount);
