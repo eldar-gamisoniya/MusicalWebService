@@ -392,7 +392,7 @@ AudioModel DatabaseHandler::createAudio(const std::string& owner, const std::str
     return audioModel;
 }
 
-std::shared_ptr<AudioModel> DatabaseHandler::getAudio(const std::string& id)
+std::shared_ptr<AudioModel> DatabaseHandler::getAudio(const std::string& id, bool getData)
 {
     mongocxx::client& conn = connection.getConnection();
 
@@ -401,7 +401,16 @@ std::shared_ptr<AudioModel> DatabaseHandler::getAudio(const std::string& id)
     std::shared_ptr<AudioModel> audioModel(new AudioModel);
     bsoncxx::document::view audio;
 
-    auto cursor = db["Audios"].find(document{} << "_id" << bsoncxx::oid(id) <<finalize);
+    mongocxx::options::find options;
+
+    if (!getData)
+    {
+        document projection;;
+        projection << "data" << -1;
+        options.projection(projection.view());
+    }
+
+    auto cursor = db["Audios"].find(document{} << "_id" << bsoncxx::oid(id) <<finalize, options);
     bool iterated = false;
     for (auto&& doc: cursor)
     {
@@ -421,8 +430,11 @@ std::shared_ptr<AudioModel> DatabaseHandler::getAudio(const std::string& id)
     audioModel->name = elementToString(audio["name"]);
     audioModel->description = elementToString(audio["description"]);
     audioModel->timestamp = elementToDate(audio["timestamp"]);
-    const bsoncxx::types::b_binary& data = audio["data"].get_binary();
-    audioModel->data = std::string((const char*)data.bytes, data.size);
+    if (getData)
+    {
+        const bsoncxx::types::b_binary& data = audio["data"].get_binary();
+        audioModel->data = std::string((const char*)data.bytes, data.size);
+    }
     audioModel->isValid = true;
     return audioModel;
 }

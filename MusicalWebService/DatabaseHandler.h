@@ -37,7 +37,7 @@ public:
     //Music operations
     static AudioModel createAudio(const std::string& owner, const std::string& name, const std::string& description,
                                   const unsigned char* data, const int size);
-    static std::shared_ptr<AudioModel> getAudio(const std::string& id);
+    static std::shared_ptr<AudioModel> getAudio(const std::string& id, bool getData);
     static std::vector<AudioModel> getAudios(const std::string& nameRegex, const std::string& ownerRegex,
                                              const int skipCount, const int count);
 };

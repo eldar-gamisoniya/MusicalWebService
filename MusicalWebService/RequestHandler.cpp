@@ -16,20 +16,28 @@ bool RequestHandler::response()
     static std::regex tokensRegex("/api/v1/users/[0-9a-zA-Z]+/token");
     static std::regex tokenRegex("/api/v1/users/[0-9a-zA-Z]+/token/[0-9a-z\\-]+");
     static std::regex passwordRegex("/api/v1/users/[0-9a-zA-Z]+/password");
+    static std::regex audioRegex("/api/v1/audios/[0-9a-z]+");
+    static std::regex streamRegex("/api/v1/audios/[0-9a-z]+/stream");
 
     static char usersUri[] = "/api/v1/users";
+    static char audiosUri[] = "/api/v1/audios";
 
     //static std::string test;
 
     switch (environment().requestMethod)
     {
     case Fastcgipp::Http::RequestMethod::HTTP_METHOD_GET:
-        if (std::regex_match(environment().scriptName, userRegex))
-            return getUser();
-
         if (environment().scriptName.compare(usersUri) == 0)
             return getUsers();
 
+        if (environment().scriptName.compare(audiosUri) == 0)
+            return getAudios();
+
+        if (std::regex_match(environment().scriptName, userRegex))
+            return getUser();
+
+        if (std::regex_match(environment().scriptName, audioRegex))
+            return getAudio();
     /*{
         return writeMusic(test);
     }*/
@@ -39,6 +47,9 @@ bool RequestHandler::response()
     case Fastcgipp::Http::RequestMethod::HTTP_METHOD_POST:
         if (environment().scriptName.compare(usersUri) == 0)
             return addUser();
+
+        if (environment().scriptName.compare(audiosUri) == 0)
+            return addAudio();
 
         if (std::regex_match(environment().scriptName, tokensRegex))
             return connectUser();
@@ -109,6 +120,20 @@ void RequestHandler::writeUser(rapidjson::PrettyWriter<rapidjson::StringBuffer, 
     writer.String(user.login.c_str());
     writer.String("aboutyourself");
     writer.String(user.aboutYourSelf.c_str());
+    writer.EndObject();
+}
+
+void RequestHandler::writeAudio(rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<> > &writer, AudioModel &audio)
+{
+    writer.StartObject();
+    writer.String("id");
+    writer.String(audio.id.c_str());
+    writer.String("owner");
+    writer.String(audio.owner.c_str());
+    writer.String("name");
+    writer.String(audio.name.c_str());
+    writer.String("description");
+    writer.String(audio.description.c_str());
     writer.EndObject();
 }
 
@@ -344,6 +369,142 @@ bool RequestHandler::changePassword()
     rapidjson::StringBuffer sb;
     rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
     writeUser(writer, user);
+    setHttpHeaders(ReturnCodes::OK);
+    out << sb.GetString();
+    return true;
+}
+
+bool RequestHandler::checkUser()
+{
+    if (!environment().checkForPost("login") || !environment().checkForPost("token"))
+        return false;
+
+    std::string login = environment().findPost("login").value;
+    std::string token = environment().findPost("token").value;
+    UserModel user = DatabaseHandler::getUserByLogin(login);
+
+    if (!user.isValid || token.compare(user.token) != 0)
+            return false;
+
+    return true;
+
+}
+
+bool RequestHandler::addAudio()
+{
+    if (!checkUser())
+    {
+        setReturnCode(ReturnCodes::UNAUTHORIZED);
+        return true;
+    }
+
+    if (!environment().checkForPost("audio"))
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
+    const Fastcgipp::Http::Post<char>& audioFile = environment().findPost("audio");
+    std::string owner = environment().findPost("login").value;
+    std::string name = audioFile.filename;
+    std::string description = environment().checkForPost("description") ? environment().findPost("description").value : "";
+    AudioModel audio = DatabaseHandler::createAudio(owner, name, description, (unsigned char*) audioFile.data(), audioFile.size());
+
+    if (!audio.isValid)
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
+    rapidjson::StringBuffer sb;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
+    writeAudio(writer, audio);
+    setHttpHeaders(ReturnCodes::CREATED);
+    out << sb.GetString();
+    return true;
+}
+
+bool RequestHandler::getAudio()
+{
+    std::string audioId = getId();
+    std::shared_ptr<AudioModel> audio = DatabaseHandler::getAudio(audioId, false);
+
+    if (!audio->isValid)
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
+    rapidjson::StringBuffer sb;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
+    writeAudio(writer, *audio);
+    setHttpHeaders(ReturnCodes::OK);
+    out << sb.GetString();
+    return true;
+}
+
+bool RequestHandler::getAudios()
+{
+    std::string nameRegex = environment().checkForGet("name") ? environment().findGet("name") : "";
+    std::string ownerRegex = environment().checkForGet("owner") ? environment().findGet("owner") : "";
+    int skipCount = 0;
+
+    if (environment().checkForGet("skipcount"))
+    {
+        try
+        {
+            skipCount = std::stoi(environment().findGet("skipcount"));
+        }
+        catch (...)
+        {
+            setReturnCode(ReturnCodes::BAD_REQUEST);
+            return true;
+        }
+    }
+
+    int count = 10;
+
+    if (environment().checkForGet("count"))
+    {
+        try
+        {
+            count = std::stoi(environment().findGet("count"));
+        }
+        catch (...)
+        {
+            setReturnCode(ReturnCodes::BAD_REQUEST);
+            return true;
+        }
+    }
+
+    std::vector<AudioModel> audios = DatabaseHandler::getAudios(nameRegex, ownerRegex, skipCount, count);
+    unsigned int audiosCount = audios.size();
+
+    if (audiosCount == 0)
+    {
+        setReturnCode(ReturnCodes::NO_CONTENT);
+        return true;
+    }
+
+    rapidjson::StringBuffer sb;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
+    writer.StartObject();
+    writer.String("audios");
+    writer.StartArray();
+
+    for (unsigned int i = 0; i < audiosCount; ++i)
+    {
+        AudioModel audio = audios.at(i);
+        writeAudio(writer, audio);
+    }
+
+    writer.EndArray();
+    writer.String("count");
+    writer.Int(audiosCount);
+    writer.String("nextSkipCount");
+    writer.Int(skipCount + audiosCount);
+    writer.EndObject();
+
     setHttpHeaders(ReturnCodes::OK);
     out << sb.GetString();
     return true;

@@ -7,6 +7,7 @@
 
 #include "rapidjson/prettywriter.h"
 #include "UserModel.h"
+#include "AudioModel.h"
 
 class RequestHandler: public Fastcgipp::Request<char>
 {
@@ -22,10 +23,17 @@ private:
     bool changeUserInfo();
     bool changePassword();
 
+    bool addAudio();
+    bool getAudio();
+    bool getAudios();
+    bool getStream();
+
     std::string getId(int offset);
+    bool checkUser();
 
     bool writeMusic(const std::string& file);
     void writeUser(rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>>& writer, UserModel& user);
+    void writeAudio(rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>>& writer, AudioModel& audio);
 
 public:
     bool response();
