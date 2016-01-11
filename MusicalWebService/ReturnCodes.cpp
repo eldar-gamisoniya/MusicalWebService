@@ -6,3 +6,4 @@ const std::string ReturnCodes::CREATED("201 Created");
 const std::string ReturnCodes::OK("200 OK");
 const std::string ReturnCodes::NO_CONTENT("204 No Content");
 const std::string ReturnCodes::UNAUTHORIZED("401 Unauthorized");
+const std::string ReturnCodes::FORBIDDEN("403 Forbidden");

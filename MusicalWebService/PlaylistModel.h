@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "AudioModel.h"
+
 class PlaylistModel
 {
 public:
@@ -11,7 +13,7 @@ public:
     std::string description;
     std::string id;
     std::string name;
-    std::vector<std::string> audios;
+    std::vector<AudioModel> audios;
     long timestamp;
     bool isValid;
 };

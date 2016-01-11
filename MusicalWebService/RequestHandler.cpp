@@ -21,6 +21,7 @@ bool RequestHandler::response()
 
     static char usersUri[] = "/api/v1/users";
     static char audiosUri[] = "/api/v1/audios";
+    static char playlistsUri[] = "/api/v1/playlists";
 
     //static std::string test;
 
@@ -32,6 +33,9 @@ bool RequestHandler::response()
 
         if (environment().scriptName.compare(audiosUri) == 0)
             return getAudios();
+
+        if (environment().scriptName.compare(playlistsUri) == 0)
+            return getPlaylists();
 
         if (std::regex_match(environment().scriptName, userRegex))
             return getUser();
@@ -137,6 +141,33 @@ void RequestHandler::writeAudio(rapidjson::PrettyWriter<rapidjson::StringBuffer,
     writer.String(audio.name.c_str());
     writer.String("description");
     writer.String(audio.description.c_str());
+    writer.EndObject();
+}
+
+void RequestHandler::writePlaylist(rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<> > &writer, PlaylistModel &playlist, bool audios)
+{
+    writer.StartObject();
+    writer.String("id");
+    writer.String(playlist.id.c_str());
+    writer.String("owner");
+    writer.String(playlist.owner.c_str());
+    writer.String("name");
+    writer.String(playlist.name.c_str());
+    writer.String("description");
+    writer.String(playlist.description.c_str());
+
+    if (audios)
+    {
+        writer.String("audios");
+        writer.StartArray();
+        int audiosCount = playlist.audios.size();
+
+        for (int i = 0; i < audiosCount; ++i)
+            writeAudio(writer, playlist.audios.at(i));
+
+        writer.EndArray();
+    }
+
     writer.EndObject();
 }
 
@@ -298,10 +329,7 @@ bool RequestHandler::getUsers()
     writer.StartArray();
 
     for (unsigned int i = 0; i < usersCount; ++i)
-    {
-        UserModel user = users.at(i);
-        writeUser(writer, user);
-    }
+        writeUser(writer, users.at(i));
 
     writer.EndArray();
     writer.String("count");
@@ -336,7 +364,7 @@ bool RequestHandler::changeUserInfo()
 
     if (!user.isValid)
     {
-        setReturnCode(ReturnCodes::UNAUTHORIZED);
+        setReturnCode(ReturnCodes::FORBIDDEN);
         return true;
     }
 
@@ -371,7 +399,7 @@ bool RequestHandler::changePassword()
 
     if (!user.isValid)
     {
-        setReturnCode(ReturnCodes::UNAUTHORIZED);
+        setReturnCode(ReturnCodes::FORBIDDEN);
         return true;
     }
 
@@ -508,10 +536,7 @@ bool RequestHandler::getAudios()
     writer.StartArray();
 
     for (unsigned int i = 0; i < audiosCount; ++i)
-    {
-        AudioModel audio = audios.at(i);
-        writeAudio(writer, audio);
-    }
+        writeAudio(writer, audios.at(i));
 
     writer.EndArray();
     writer.String("count");
@@ -537,4 +562,80 @@ bool RequestHandler::getStream()
     }
 
     return writeMusic(stream->data);
+}
+
+bool RequestHandler::getPlaylists()
+{
+    if (!checkUser())
+    {
+        setReturnCode(ReturnCodes::UNAUTHORIZED);
+        return true;
+    }
+
+    std::string nameRegex = environment().checkForGet("name") ? environment().findGet("name") : "";
+    std::string ownerRegex = environment().checkForGet("owner") ? environment().findGet("owner") : "";
+    int skipCount = 0;
+
+    if (environment().checkForGet("skipcount"))
+    {
+        try
+        {
+            skipCount = std::stoi(environment().findGet("skipcount"));
+        }
+        catch (...)
+        {
+            setReturnCode(ReturnCodes::BAD_REQUEST);
+            return true;
+        }
+    }
+
+    int count = 10;
+
+    if (environment().checkForGet("count"))
+    {
+        try
+        {
+            count = std::stoi(environment().findGet("count"));
+        }
+        catch (...)
+        {
+            setReturnCode(ReturnCodes::BAD_REQUEST);
+            return true;
+        }
+    }
+
+    if (count <= 0 || skipCount < 0)
+    {
+        setReturnCode(ReturnCodes::BAD_REQUEST);
+        return true;
+    }
+
+    std::vector<PlaylistModel> playlists = DatabaseHandler::getPlaylists(nameRegex, ownerRegex, skipCount, count);
+    unsigned int playlistsCount = playlists.size();
+
+    if (playlistsCount == 0)
+    {
+        setReturnCode(ReturnCodes::NO_CONTENT);
+        return true;
+    }
+
+    rapidjson::StringBuffer sb;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
+    writer.StartObject();
+    writer.String("playlists");
+    writer.StartArray();
+
+    for (unsigned int i = 0; i < playlistsCount; ++i)
+        writePlaylist(writer, playlists.at(i), false);
+
+    writer.EndArray();
+    writer.String("count");
+    writer.Int(playlistsCount);
+    writer.String("nextSkipCount");
+    writer.Int(skipCount + playlistsCount);
+    writer.EndObject();
+
+    setHttpHeaders(ReturnCodes::OK);
+    out << sb.GetString();
+    return true;
 }

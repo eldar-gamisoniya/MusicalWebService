@@ -12,6 +12,7 @@ public:
     static const std::string OK;
     static const std::string NO_CONTENT;
     static const std::string UNAUTHORIZED;
+    static const std::string FORBIDDEN;
 };
 
 #endif // RETURNCODES_H
