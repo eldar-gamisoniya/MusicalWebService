@@ -721,7 +721,8 @@ bool RequestHandler::deletePlaylist()
     }
 
     std::string playlistId = getId();
-    PlaylistModel playlist = DatabaseHandler::deletePlaylist(playlistId);
+    std::string login = environment().findPost("login").value;
+    PlaylistModel playlist = DatabaseHandler::deletePlaylist(playlistId, login);
 
     if (!playlist.isValid)
     {
