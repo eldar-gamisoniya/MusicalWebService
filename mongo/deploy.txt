@@ -1,0 +1,12 @@
+use MusicalWebService
+db.createCollection("Users")
+db.createCollection("Audios")
+db.createCollection("Playlists")
+db.Users.createIndex({login: 1})
+db.Users.createIndex({timestamp: 1})
+db.Audios.createIndex({name: 1})
+db.Audios.createIndex({owner: 1})
+db.Audios.createIndex({timestamp: 1})
+db.Playlists.createIndex({name: 1})
+db.Playlists.createIndex({owner: 1})
+db.Playlists.createIndex({timestamp: 1})
