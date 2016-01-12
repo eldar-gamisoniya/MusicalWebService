@@ -489,7 +489,7 @@ PlaylistModel DatabaseHandler::getPlaylist(const std::string& id)
     PlaylistModel playlistModel;
     bsoncxx::document::view playlist;
 
-    auto cursor = db["Playlists"].find(document{} << "_id" << id <<finalize);
+    auto cursor = db["Playlists"].find(document{} << "_id" << bsoncxx::oid(id) <<finalize);
     bool iterated = false;
     for (auto&& doc: cursor)
     {
@@ -536,41 +536,41 @@ PlaylistModel DatabaseHandler::createPlaylist(const std::string& name, const std
 
     long timestamp  = currentTimestamp();
 
-    auto playlistDoc = document{}
-                << "owner" << owner
-                << "name" << name
-                << "description" << description
-                << "audios" << open_array;
-
     PlaylistModel playlistModel;
 
-    if (copyingId.size() > 0)
-    {
-        playlistModel = getPlaylist(copyingId);
-        for (unsigned int i = 0; i < playlistModel.audios.size(); ++i)
-        {
-            playlistDoc << open_document
-                         << "_id" << bsoncxx::oid(playlistModel.audios[i].id)
-                         << "owner" << playlistModel.audios[i].owner
-                         << "name" << playlistModel.audios[i].name
-                         << "description" << playlistModel.audios[i].description
-                         << "timestamp" << bsoncxx::types::b_date(playlistModel.audios[i].timestamp)
-                         << close_document;
-        }
-    }
+    bsoncxx::document::value newPlaylist = document{} << "owner" << owner
+                << "name" << name
+                << "description" << description
+                << "audios" << open_array <<
+                   [&](bsoncxx::builder::stream::array_context<> arr) {
+                        if (copyingId.size() > 0)
+                        {
+                            playlistModel = getPlaylist(copyingId);
 
-    playlistDoc << close_array
-    << "timestamp" << bsoncxx::types::b_date(timestamp)
-    << finalize;
+                            for (unsigned int i = 0; i < playlistModel.audios.size(); ++i)
+                            {
+                                arr << open_document
+                                             << "_id" << bsoncxx::oid(playlistModel.audios[i].id)
+                                             << "owner" << playlistModel.audios[i].owner
+                                             << "name" << playlistModel.audios[i].name
+                                             << "description" << playlistModel.audios[i].description
+                                             << close_document;
+                            }
+                        }
+                    }
+                << close_array
+                << "timestamp" << bsoncxx::types::b_date(timestamp) <<finalize;
 
     try
     {
-        auto res = db["Playlists"].insert_one(((document*) &playlistDoc)->view());
+        auto res = db["Playlists"].insert_one(std::move(newPlaylist));
+
         if (res->result().inserted_count() != 1)
         {
             playlistModel.isValid = false;
             return playlistModel;
         }
+
         playlistModel.id = res->inserted_id().get_oid().value.to_string();
     }
     catch(...)
@@ -578,6 +578,7 @@ PlaylistModel DatabaseHandler::createPlaylist(const std::string& name, const std
         playlistModel.isValid = false;
         return playlistModel;
     }
+
     playlistModel.isValid = true;
     playlistModel.owner = owner;
     playlistModel.name = name;
@@ -589,7 +590,43 @@ PlaylistModel DatabaseHandler::createPlaylist(const std::string& name, const std
 std::vector <PlaylistModel> DatabaseHandler::getPlaylists(const std::string& nameRegex, const std::string& ownerRegex,
                                                 const int skipCount, const int count)
 {
-    return std::vector<PlaylistModel>();
+    mongocxx::client& conn = connection.getConnection();
+    auto db = conn["MusicalWebService"];
+
+    document filter;
+
+    if (nameRegex.size() > 0)
+        filter << "name" << open_document << "$regex" << nameRegex << close_document;
+    if (ownerRegex.size() > 0)
+        filter << "owner" << open_document << "$regex" << ownerRegex << close_document;
+
+    mongocxx::options::find options;
+    document order;
+    order << "timestamp" << 1 << "_id" << 1;
+    options.sort(order.view());
+    document projection;;
+    projection << "audios" << 0 << finalize;
+    options.projection(projection.view());
+    options.limit(count);
+    options.skip(skipCount);
+
+    auto cursor = db["Playlists"].find(filter.view(), options);
+
+    std::vector<PlaylistModel> v;
+
+    for (auto&& doc: cursor)
+    {
+        PlaylistModel playlistModel;
+        playlistModel.id = elementToStringId(doc["_id"]);
+        playlistModel.owner = elementToString(doc["owner"]);
+        playlistModel.name = elementToString(doc["name"]);
+        playlistModel.description = elementToString(doc["description"]);
+        playlistModel.timestamp = elementToDate(doc["timestamp"]);
+        playlistModel.isValid = true;
+        v.push_back(std::move(playlistModel));
+    }
+
+    return v;
 }
 
 PlaylistModel DatabaseHandler::addAudioToPlaylist(const std::string& audioId, const std::string& playlistId,

@@ -796,7 +796,7 @@ bool RequestHandler::deleteAudioFromPlaylist()
     rapidjson::StringBuffer sb;
     rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
     writePlaylist(writer, playlist, true);
-    setHttpHeaders(ReturnCodes::CREATED);
+    setHttpHeaders(ReturnCodes::OK);
     out << sb.GetString();
     return true;
 }
