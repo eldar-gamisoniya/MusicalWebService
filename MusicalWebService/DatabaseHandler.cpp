@@ -515,13 +515,12 @@ PlaylistModel DatabaseHandler::getPlaylist(const std::string& id)
     for (auto i = arr.cbegin(); i != arr.cend(); i++)
     {
         AudioModel audioModel;
-        auto doc = (*i).get_document().value;
+        auto doc = i->get_document().value;
         audioModel.name = elementToString(doc["name"]);
         audioModel.owner = elementToString(doc["owner"]);
         audioModel.id = elementToStringId(doc["_id"]);
-        audioModel.description = elementToStringId(doc["description"]);
-        audioModel.timestamp = elementToDate(doc["timestamp"]);
-        playlistModel.audios.push_back(audioModel);
+        audioModel.description = elementToString(doc["description"]);
+        playlistModel.audios.push_back(std::move(audioModel));
     }
 
     playlistModel.isValid = true;
@@ -546,8 +545,9 @@ PlaylistModel DatabaseHandler::createPlaylist(const std::string& name, const std
                         if (copyingId.size() > 0)
                         {
                             playlistModel = getPlaylist(copyingId);
+                            unsigned int size = playlistModel.audios.size();
 
-                            for (unsigned int i = 0; i < playlistModel.audios.size(); ++i)
+                            for (unsigned int i = 0; i < size; ++i)
                             {
                                 arr << open_document
                                              << "_id" << bsoncxx::oid(playlistModel.audios[i].id)
@@ -632,22 +632,159 @@ std::vector <PlaylistModel> DatabaseHandler::getPlaylists(const std::string& nam
 PlaylistModel DatabaseHandler::addAudioToPlaylist(const std::string& audioId, const std::string& playlistId,
                                         const std::string& owner)
 {
-    PlaylistModel model;
-    model.isValid = false;
-    return model;
+    PlaylistModel playlistModel = getPlaylist(playlistId);
+    std::shared_ptr<AudioModel> audioModel = getAudio(audioId, false);
+
+    if (!playlistModel.isValid || !audioModel->isValid || owner.compare(playlistModel.owner) != 0)
+    {
+        playlistModel.isValid = false;
+        return playlistModel;
+    }
+
+    playlistModel.audios.push_back(*audioModel);
+    mongocxx::client& conn = connection.getConnection();
+    auto db = conn["MusicalWebService"];
+
+    bsoncxx::builder::stream::document filterPlaylist, updatePlaylist;
+    filterPlaylist << "_id"
+                   << bsoncxx::oid(playlistId);
+    updatePlaylist << "$set" << open_document << "audios" << open_array <<
+                        [&](bsoncxx::builder::stream::array_context<> arr) {
+                            unsigned int size = playlistModel.audios.size();
+
+                            for (unsigned int i = 0; i < size; ++i)
+                            {
+                                arr << open_document
+                                    << "_id" << bsoncxx::oid(playlistModel.audios[i].id)
+                                    << "owner" << playlistModel.audios[i].owner
+                                    << "name" << playlistModel.audios[i].name
+                                    << "description" << playlistModel.audios[i].description
+                                    << close_document;
+                            }
+                        }
+                   << close_array << close_document;
+
+    try
+    {
+        auto res = db["Playlists"].update_one(filterPlaylist.view(), updatePlaylist.view());
+
+        if (res->modified_count() != 1)
+        {
+            playlistModel.isValid = false;
+            return playlistModel;
+        }
+    }
+    catch(...)
+    {
+        playlistModel.isValid = false;
+        return playlistModel;
+    }
+
+    return playlistModel;
 }
 
 PlaylistModel DatabaseHandler::deleteAudioFromPlaylist(const std::string& audioId, const std::string& playlistId,
                                              const std::string& owner)
 {
-    PlaylistModel model;
-    model.isValid = false;
-    return model;
+    PlaylistModel playlistModel = getPlaylist(playlistId);
+
+    if (!playlistModel.isValid || owner.compare(playlistModel.owner) != 0)
+    {
+        playlistModel.isValid = false;
+        return playlistModel;
+    }
+
+    mongocxx::client& conn = connection.getConnection();
+    auto db = conn["MusicalWebService"];
+    bool deleted = false;
+    unsigned int deletedIndex;
+
+    bsoncxx::builder::stream::document filterPlaylist, updatePlaylist;
+    filterPlaylist << "_id"
+                   << bsoncxx::oid(playlistId);
+    updatePlaylist << "$set" << open_document << "audios" << open_array <<
+                        [&](bsoncxx::builder::stream::array_context<> arr) {
+                            unsigned int size = playlistModel.audios.size();
+
+                            for (unsigned int i = 0; i < size; ++i)
+                            {
+
+                                if (audioId.compare(playlistModel.audios[i].id) != 0 || deleted)
+                                {
+                                    arr << open_document
+                                        << "_id" << bsoncxx::oid(playlistModel.audios[i].id)
+                                        << "owner" << playlistModel.audios[i].owner
+                                        << "name" << playlistModel.audios[i].name
+                                        << "description" << playlistModel.audios[i].description
+                                        << close_document;
+                                }
+                                else if (!deleted)
+                                {
+                                    deleted = true;
+                                    deletedIndex = i;
+                                }
+                            }
+                        }
+                   << close_array << close_document;
+
+    if (!deleted)
+    {
+        playlistModel.isValid = false;
+        return playlistModel;
+    }
+
+    try
+    {
+        auto res = db["Playlists"].update_one(filterPlaylist.view(), updatePlaylist.view());
+
+        if (res->modified_count() != 1)
+        {
+            playlistModel.isValid = false;
+            return playlistModel;
+        }
+    }
+    catch(...)
+    {
+        playlistModel.isValid = false;
+        return playlistModel;
+    }
+
+    playlistModel.audios.erase(playlistModel.audios.begin() + deletedIndex);
+    return playlistModel;
 }
 
 PlaylistModel DatabaseHandler::deletePlaylist(const std::string& id, const std::string& owner)
 {
-    PlaylistModel model;
-    model.isValid = false;
-    return model;
+    PlaylistModel playlistModel = getPlaylist(id);
+
+    if (!playlistModel.isValid || owner.compare(playlistModel.owner) != 0)
+    {
+        playlistModel.isValid = false;
+        return playlistModel;
+    }
+
+    mongocxx::client& conn = connection.getConnection();
+    auto db = conn["MusicalWebService"];
+    auto deletePlaylist = document{}
+            << "_id"
+            << bsoncxx::oid(id)
+            << finalize;
+
+    try
+    {
+        auto res = db["Playlists"].delete_one(std::move(deletePlaylist));
+
+        if (res->deleted_count() != 1)
+        {
+            playlistModel.isValid = false;
+            return playlistModel;
+        }
+    }
+    catch(...)
+    {
+        playlistModel.isValid = false;
+        return playlistModel;
+    }
+
+    return playlistModel;
 }

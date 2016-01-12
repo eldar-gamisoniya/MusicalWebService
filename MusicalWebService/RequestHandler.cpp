@@ -274,7 +274,7 @@ bool RequestHandler::disconnectUser()
     writer.String("token");
     writer.String("");
     writer.EndObject();
-    setReturnCode(ReturnCodes::OK);
+    setHttpHeaders(ReturnCodes::OK);
     out << sb.GetString();
     return true;
 }
@@ -733,10 +733,10 @@ bool RequestHandler::deletePlaylist()
     rapidjson::StringBuffer sb;
     rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>> writer(sb);
     writer.StartObject();
-    writer.String("deleted");
-    writer.String("ok");
+    writer.String("id");
+    writer.String(playlist.id.c_str());
     writer.EndObject();
-    setReturnCode(ReturnCodes::OK);
+    setHttpHeaders(ReturnCodes::OK);
     out << sb.GetString();
     return true;
 }

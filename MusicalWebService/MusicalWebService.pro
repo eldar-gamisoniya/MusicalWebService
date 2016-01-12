@@ -9,13 +9,15 @@ CONFIG   += console
 CONFIG   -= app_bundle
 CONFIG   -= qt
 CONFIG   += c++11
+CONFIG   += lpthread
 
 LIBS += \
  -lboost_system \
  -lboost_thread \
  -lfastcgipp \
  -lmongocxx \
- -lbsoncxx
+ -lbsoncxx \
+ -pthread
 
 SOURCES += \
     main.cpp \

@@ -1,9 +1,12 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <stdio.h>
-#include "RequestHandler.h"
 #include <fastcgi++/manager.hpp>
 #include <fstream>
 #include <stdio.h>
+#include <thread>
+#include "RequestHandler.h"
+
+#define THREAD_COUNT 8
 
 void error_log(const char* msg)
 {
@@ -18,15 +21,29 @@ void error_log(const char* msg)
    error << '[' << boost::posix_time::second_clock::local_time() << "] " << msg << std::endl;
 }
 
+void managerFunction()
+{
+    while (true)
+    {
+        try
+        {
+           Fastcgipp::Manager<RequestHandler> fcgi;
+           fcgi.handler();
+        }
+        catch(std::exception& e)
+        {
+           error_log(e.what());
+        }
+    }
+}
+
 int main()
 {
-   try
-   {
-      Fastcgipp::Manager<RequestHandler> fcgi;
-      fcgi.handler();
-   }
-   catch(std::exception& e)
-   {
-      error_log(e.what());
-   }
+    std::vector<std::thread> threads;
+
+    for (int i = 0; i < THREAD_COUNT; ++i)
+        threads.push_back(std::move(std::thread(managerFunction)));
+
+    for (int i = 0; i < THREAD_COUNT; ++i)
+        threads.at(i).join();
 }
