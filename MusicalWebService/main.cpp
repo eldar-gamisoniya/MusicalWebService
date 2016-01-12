@@ -39,11 +39,21 @@ void managerFunction()
 
 int main()
 {
-    std::vector<std::thread> threads;
+    /*std::vector<std::thread> threads;
 
     for (int i = 0; i < THREAD_COUNT; ++i)
         threads.push_back(std::move(std::thread(managerFunction)));
 
     for (int i = 0; i < THREAD_COUNT; ++i)
-        threads.at(i).join();
+        threads.at(i).join();*/
+
+    try
+    {
+       Fastcgipp::Manager<RequestHandler> fcgi;
+       fcgi.handler();
+    }
+    catch(std::exception& e)
+    {
+       error_log(e.what());
+    }
 }
