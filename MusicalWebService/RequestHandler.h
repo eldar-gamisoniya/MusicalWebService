@@ -9,10 +9,13 @@
 #include "UserModel.h"
 #include "AudioModel.h"
 #include "PlaylistModel.h"
+#include "DatabaseHandler.h"
 
 class RequestHandler: public Fastcgipp::Request<char>
 {
 private:
+    DatabaseHandler dbHandler;
+
     void setReturnCode(const std::string& code);
     void setHttpHeaders(const std::string& code);
 

@@ -209,7 +209,7 @@ bool RequestHandler::addUser()
         return true;
     }
 
-    UserModel user = DatabaseHandler::createUser(login, password, aboutyourself);
+    UserModel user = dbHandler.createUser(login, password, aboutyourself);
 
     if (!user.isValid)
     {
@@ -236,7 +236,7 @@ bool RequestHandler::connectUser()
     std::string login = getId(1);
     std::string password = environment().findPost("password").value;
 
-    UserModel user = DatabaseHandler::createToken(login, password);
+    UserModel user = dbHandler.createToken(login, password);
 
     if (!user.isValid)
     {
@@ -260,7 +260,7 @@ bool RequestHandler::disconnectUser()
 {
     std::string login = getId(2);
     std::string token = getId();
-    UserModel user = DatabaseHandler::deleteToken(login, token);
+    UserModel user = dbHandler.deleteToken(login, token);
 
     if (!user.isValid)
     {
@@ -283,7 +283,7 @@ bool RequestHandler::disconnectUser()
 bool RequestHandler::getUser()
 {
     std::string login = getId();
-    UserModel user = DatabaseHandler::getUserByLogin(login);
+    UserModel user = dbHandler.getUserByLogin(login);
 
     if (!user.isValid)
     {
@@ -338,7 +338,7 @@ bool RequestHandler::getUsers()
         return true;
     }
 
-    std::vector<UserModel> users = DatabaseHandler::getUsers(loginRegex, skipCount, count);
+    std::vector<UserModel> users = dbHandler.getUsers(loginRegex, skipCount, count);
     unsigned int usersCount = users.size();
 
     if (usersCount == 0)
@@ -385,7 +385,7 @@ bool RequestHandler::changeUserInfo()
     std::string login = getId();
     std::string token = environment().findPost("token").value;
     std::string aboutYourslef = environment().findPost("aboutyourself").value;
-    UserModel user = DatabaseHandler::modifyAboutYourSelf(login, token, aboutYourslef);
+    UserModel user = dbHandler.modifyAboutYourSelf(login, token, aboutYourslef);
 
     if (!user.isValid)
     {
@@ -420,7 +420,7 @@ bool RequestHandler::changePassword()
     std::string newPassword = environment().findPost("newpassword").value;
     std::string login = getId(1);
 
-    UserModel user = DatabaseHandler::modifyPassword(login, token, oldPassword, newPassword);
+    UserModel user = dbHandler.modifyPassword(login, token, oldPassword, newPassword);
 
     if (!user.isValid)
     {
@@ -443,7 +443,7 @@ bool RequestHandler::checkUser()
 
     std::string login = environment().findPost("login").value;
     std::string token = environment().findPost("token").value;
-    UserModel user = DatabaseHandler::getUserByLogin(login);
+    UserModel user = dbHandler.getUserByLogin(login);
 
     if (!user.isValid || token.compare(user.token) != 0)
             return false;
@@ -470,7 +470,7 @@ bool RequestHandler::addAudio()
     std::string owner = environment().findPost("login").value;
     std::string name = audioFile.filename;
     std::string description = environment().checkForPost("description") ? environment().findPost("description").value : "";
-    AudioModel audio = DatabaseHandler::createAudio(owner, name, description, (unsigned char*) audioFile.data(), audioFile.size());
+    AudioModel audio = dbHandler.createAudio(owner, name, description, (unsigned char*) audioFile.data(), audioFile.size());
 
     if (!audio.isValid)
     {
@@ -489,7 +489,7 @@ bool RequestHandler::addAudio()
 bool RequestHandler::getAudio()
 {
     std::string audioId = getId();
-    std::shared_ptr<AudioModel> audio = DatabaseHandler::getAudio(audioId, false);
+    std::shared_ptr<AudioModel> audio = dbHandler.getAudio(audioId, false);
 
     if (!audio->isValid)
     {
@@ -545,12 +545,12 @@ bool RequestHandler::getAudios()
         return true;
     }
 
-    std::vector<AudioModel> audios = DatabaseHandler::getAudios(nameRegex, ownerRegex, skipCount, count);
+    std::vector<AudioModel> audios = dbHandler.getAudios(nameRegex, ownerRegex, skipCount, count);
     unsigned int audiosCount = audios.size();
 
     if (audiosCount == 0)
     {
-        setReturnCode(ReturnCodes::NO_CONTENT);
+        setReturnCode(ReturnCodes::OK);
         return true;
     }
 
@@ -578,7 +578,7 @@ bool RequestHandler::getAudios()
 bool RequestHandler::getStream()
 {
     std::string id = getId(1);
-    std::shared_ptr<AudioModel> stream = DatabaseHandler::getAudio(id, true);
+    std::shared_ptr<AudioModel> stream = dbHandler.getAudio(id, true);
 
     if (!stream->isValid)
     {
@@ -629,7 +629,7 @@ bool RequestHandler::getPlaylists()
         return true;
     }
 
-    std::vector<PlaylistModel> playlists = DatabaseHandler::getPlaylists(nameRegex, ownerRegex, skipCount, count);
+    std::vector<PlaylistModel> playlists = dbHandler.getPlaylists(nameRegex, ownerRegex, skipCount, count);
     unsigned int playlistsCount = playlists.size();
 
     if (playlistsCount == 0)
@@ -677,7 +677,7 @@ bool RequestHandler::addPlaylist()
     std::string name = environment().findPost("name").value;
     std::string description = environment().checkForPost("description") ? environment().findPost("description").value : "";
     std::string id = environment().checkForPost("id") ? environment().findPost("id").value : "";
-    PlaylistModel playlist = DatabaseHandler::createPlaylist(name, id, owner, description);
+    PlaylistModel playlist = dbHandler.createPlaylist(name, id, owner, description);
 
     if (!playlist.isValid)
     {
@@ -696,7 +696,7 @@ bool RequestHandler::addPlaylist()
 bool RequestHandler::getPlaylist()
 {
     std::string playlistId = getId();
-    PlaylistModel playlist = DatabaseHandler::getPlaylist(playlistId);
+    PlaylistModel playlist = dbHandler.getPlaylist(playlistId);
 
     if (!playlist.isValid)
     {
@@ -722,7 +722,7 @@ bool RequestHandler::deletePlaylist()
 
     std::string playlistId = getId();
     std::string login = environment().findPost("login").value;
-    PlaylistModel playlist = DatabaseHandler::deletePlaylist(playlistId, login);
+    PlaylistModel playlist = dbHandler.deletePlaylist(playlistId, login);
 
     if (!playlist.isValid)
     {
@@ -758,7 +758,7 @@ bool RequestHandler::addAudioToPlaylist()
     std::string audioId = environment().findPost("audioid").value;
     std::string playlistId = getId(1);
     std::string login = environment().findPost("login").value;
-    PlaylistModel playlist = DatabaseHandler::addAudioToPlaylist(audioId, playlistId, login);
+    PlaylistModel playlist = dbHandler.addAudioToPlaylist(audioId, playlistId, login);
 
     if (!playlist.isValid)
     {
@@ -785,7 +785,7 @@ bool RequestHandler::deleteAudioFromPlaylist()
     std::string audioId = getId();
     std::string playlistId = getId(2);
     std::string login = environment().findPost("login").value;
-    PlaylistModel playlist = DatabaseHandler::deleteAudioFromPlaylist(audioId, playlistId, login);
+    PlaylistModel playlist = dbHandler.deleteAudioFromPlaylist(audioId, playlistId, login);
 
     if (!playlist.isValid)
     {

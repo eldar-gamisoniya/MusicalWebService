@@ -14,44 +14,44 @@
 class DatabaseHandler
 {
 private:
-    static std::string newUuid();
-    static std::string elementToString(const bsoncxx::document::element& el);
-    static std::string elementToStringId(const bsoncxx::document::element& el);
-    static long elementToLong(const bsoncxx::document::element& el);
-    static long elementToDate(const bsoncxx::document::element& el);
-    static long currentTimestamp();
-    static StaticConnection connection;
+    std::string newUuid();
+    std::string elementToString(const bsoncxx::document::element& el);
+    std::string elementToStringId(const bsoncxx::document::element& el);
+    long elementToLong(const bsoncxx::document::element& el);
+    long elementToDate(const bsoncxx::document::element& el);
+    long currentTimestamp();
+    StaticConnection connection;
 
 public:
     //User operations
-    static std::vector<UserModel> getUsers(const std::string& loginRegex, const int skipCount, const int count);
-    static UserModel createUser(const std::string& login,const std::string& password,
+    std::vector<UserModel> getUsers(const std::string& loginRegex, const int skipCount, const int count);
+    UserModel createUser(const std::string& login,const std::string& password,
                                 const std::string& aboutYourSelf);
-    static UserModel modifyAboutYourSelf(const std::string& login, const std::string& token,
+    UserModel modifyAboutYourSelf(const std::string& login, const std::string& token,
                                          const std::string& aboutYourSelf);
-    static UserModel modifyPassword(const std::string& login, const std::string& token,
+    UserModel modifyPassword(const std::string& login, const std::string& token,
                                     const std::string& oldPassword, const std::string& newPassword);
-    static UserModel getUserByLogin(const std::string& login);
-    static UserModel createToken(const std::string& login, const std::string& password);
-    static UserModel deleteToken(const std::string& login, const std::string& token);
+    UserModel getUserByLogin(const std::string& login);
+    UserModel createToken(const std::string& login, const std::string& password);
+    UserModel deleteToken(const std::string& login, const std::string& token);
 
     //Audio operations
-    static AudioModel createAudio(const std::string& owner, const std::string& name, const std::string& description,
+    AudioModel createAudio(const std::string& owner, const std::string& name, const std::string& description,
                                   const unsigned char* data, const int size);
-    static std::shared_ptr<AudioModel> getAudio(const std::string& id, bool getData);
-    static std::vector<AudioModel> getAudios(const std::string& nameRegex, const std::string& ownerRegex,
+    std::shared_ptr<AudioModel> getAudio(const std::string& id, bool getData);
+    std::vector<AudioModel> getAudios(const std::string& nameRegex, const std::string& ownerRegex,
                                              const int skipCount, const int count);
 
     //Playlist operations
-    static std::vector <PlaylistModel> getPlaylists(const std::string& nameRegex, const std::string& ownerRegex,
+    std::vector <PlaylistModel> getPlaylists(const std::string& nameRegex, const std::string& ownerRegex,
                                                     const int skipCount, const int count);
-    static PlaylistModel getPlaylist(const std::string& id);
-    static PlaylistModel addAudioToPlaylist(const std::string& audioId, const std::string& playlistId,
+    PlaylistModel getPlaylist(const std::string& id);
+    PlaylistModel addAudioToPlaylist(const std::string& audioId, const std::string& playlistId,
                                             const std::string& owner);
-    static PlaylistModel deleteAudioFromPlaylist(const std::string& audioId, const std::string& playlistId,
+    PlaylistModel deleteAudioFromPlaylist(const std::string& audioId, const std::string& playlistId,
                                                  const std::string& owner);
-    static PlaylistModel createPlaylist(const std::string& name, const std::string& copyingId,
+    PlaylistModel createPlaylist(const std::string& name, const std::string& copyingId,
                                         const std::string& owner, const std::string& description);
-    static PlaylistModel deletePlaylist(const std::string& id, const std::string& owner);
+    PlaylistModel deletePlaylist(const std::string& id, const std::string& owner);
 };
 #endif

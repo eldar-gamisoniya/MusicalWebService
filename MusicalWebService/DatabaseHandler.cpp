@@ -23,8 +23,6 @@ using bsoncxx::builder::stream::open_array;
 using bsoncxx::builder::stream::close_array;
 using bsoncxx::builder::stream::finalize;
 
-StaticConnection DatabaseHandler::connection;
-
 std::string DatabaseHandler::newUuid()
 {
     boost::uuids::uuid uuid = boost::uuids::random_generator()();

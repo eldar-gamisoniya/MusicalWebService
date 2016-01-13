@@ -6,7 +6,7 @@
 #include <thread>
 #include "RequestHandler.h"
 
-#define THREAD_COUNT 8
+#define THREAD_COUNT 10
 
 void error_log(const char* msg)
 {
@@ -39,15 +39,15 @@ void managerFunction()
 
 int main()
 {
-    /*std::vector<std::thread> threads;
+    std::vector<std::thread> threads;
 
     for (int i = 0; i < THREAD_COUNT; ++i)
         threads.push_back(std::move(std::thread(managerFunction)));
 
     for (int i = 0; i < THREAD_COUNT; ++i)
-        threads.at(i).join();*/
+        threads.at(i).join();
 
-    try
+    /*try
     {
        Fastcgipp::Manager<RequestHandler> fcgi;
        fcgi.handler();
@@ -55,5 +55,5 @@ int main()
     catch(std::exception& e)
     {
        error_log(e.what());
-    }
+    }*/
 }
